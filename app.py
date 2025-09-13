@@ -15,6 +15,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-prod
 app.permanent_session_lifetime = timedelta(minutes=15)
 
 # configure the database
+
 database_url = os.environ.get("DATABASE_URL", "sqlite:///vehicle_marketplace.db")
 # Fix for Heroku PostgreSQL URL format
 if database_url.startswith("postgres://"):

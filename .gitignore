@@ -169,6 +169,26 @@ config_local.py
 # Log files
 *.log
 
+# Development and deployment scripts (not needed in production)
+deploy_heroku.bat
+push_to_github.bat
+run_local.py
+
+# Duplicate requirements file
+requerimients.txt
+
+# Local database
+*.db
+instance/
+
+# Backup system logs and state
+backup_state.json
+backup_monitor.log
+backup_scheduler.log
+backup_system.log
+incremental_backup.log
+incremental_backup_config.json
+
 # OS generated files
 .DS_Store
 .DS_Store?
