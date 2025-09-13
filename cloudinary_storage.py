@@ -45,9 +45,11 @@ class CloudinaryStorage:
                 secure=True
             )
             self.enabled = True
+            print(f"✅ Cloudinary configured successfully with cloud: {self.cloud_name}")
             logging.info(f"Cloudinary configured successfully with cloud: {self.cloud_name}")
         else:
             self.enabled = False
+            print("❌ Cloudinary credentials not configured. Using local storage.")
             logging.warning("Cloudinary credentials not configured. Using local storage.")
     
     def upload_file(self, file, folder='vehicle_images'):
@@ -56,6 +58,7 @@ class CloudinaryStorage:
         Returns: dict with success status and file URL or error
         """
         if not self.enabled:
+            print("❌ Cloudinary upload failed: Not configured")
             return {
                 'success': False,
                 'error': 'Cloudinary not configured'
@@ -68,6 +71,8 @@ class CloudinaryStorage:
             filename = secure_filename(file.filename)
             name_without_ext = os.path.splitext(filename)[0]
             public_id = f"{folder}/{timestamp}_{unique_id}_{name_without_ext}"
+            
+            print(f"🔄 Attempting Cloudinary upload: {public_id}")
             
             # Upload to Cloudinary with optimizations
             result = cloudinary.uploader.upload(
@@ -86,6 +91,8 @@ class CloudinaryStorage:
                 ]
             )
             
+            print(f"✅ Cloudinary upload successful: {result['secure_url']}")
+            
             return {
                 'success': True,
                 'url': result['secure_url'],
@@ -99,6 +106,7 @@ class CloudinaryStorage:
             }
             
         except Exception as e:
+            print(f"❌ Cloudinary upload error: {e}")
             logging.error(f"Cloudinary upload error: {e}")
             return {
                 'success': False,
