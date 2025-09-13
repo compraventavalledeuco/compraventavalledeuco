@@ -11,18 +11,20 @@ def add_seller_keyword_column():
     with app.app_context():
         try:
             # Check if column already exists
-            result = db.engine.execute(db.text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='vehicle' AND column_name='seller_keyword';
-            """))
-            
-            if result.fetchone():
-                print("Column seller_keyword already exists")
-                return
-            
-            # Add the column
-            db.engine.execute(db.text("ALTER TABLE vehicle ADD COLUMN seller_keyword VARCHAR(255);"))
+            with db.engine.connect() as conn:
+                result = conn.execute(db.text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='vehicle' AND column_name='seller_keyword';
+                """))
+                
+                if result.fetchone():
+                    print("Column seller_keyword already exists")
+                    return
+                
+                # Add the column
+                conn.execute(db.text("ALTER TABLE vehicle ADD COLUMN seller_keyword VARCHAR(255);"))
+                conn.commit()
             print("Column seller_keyword added successfully")
             
         except Exception as e:
