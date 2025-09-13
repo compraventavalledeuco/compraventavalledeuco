@@ -49,6 +49,7 @@ class Vehicle(db.Model):
                            onupdate=datetime.utcnow)
     location = db.Column(db.String(50), nullable=True)  # Tunuyán, Tupungato, San Carlos
     tire_condition = db.Column(db.String(50), nullable=True)  # Estado de Cubiertas
+    seller_keyword = db.Column(db.String(50), nullable=True)  # Palabra clave del vendedor para agrupar vehículos
     client_request_id = db.Column(
         db.Integer, db.ForeignKey('client_request.id'), nullable=True
     )  # Link to original request if created from client request

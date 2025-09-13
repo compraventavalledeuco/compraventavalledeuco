@@ -64,6 +64,15 @@
                 </a>
             </li>
             
+            <!-- Palabras Clave de Vendedores -->
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_seller_keywords' %}active{% endif %}" 
+                   href="{{ url_for('admin_seller_keywords') }}">
+                    <i class="fas fa-key me-2"></i>
+                    Palabras Clave
+                </a>
+            </li>
+            
             <!-- Sistema de Backup -->
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'admin_backup_dashboard' %}active{% endif %}" 

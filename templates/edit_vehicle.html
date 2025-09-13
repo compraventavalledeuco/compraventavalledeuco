@@ -152,6 +152,17 @@
                                 </select>
                             </div>
                             
+                            <div class="col-md-6 mb-3">
+                                <label for="seller_keyword" class="form-label">
+                                    <i class="fas fa-key me-2"></i>Palabra Clave de Vendedor
+                                </label>
+                                <input type="text" class="form-control" id="seller_keyword" name="seller_keyword" 
+                                       value="{{ vehicle.seller_keyword or '' }}" placeholder="AUTOSDIEGO">
+                                <div class="form-text">
+                                    Palabra única para agrupar todos tus vehículos. Los usuarios pueden buscar esta palabra para ver todos tus anuncios.
+                                </div>
+                            </div>
+                            
                             <div class="col-12 mb-3" id="description-field">
                                 <label for="description" class="form-label">
                                     <i class="fas fa-align-left me-2"></i>Descripción *

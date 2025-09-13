@@ -110,7 +110,8 @@ def index():
                 Vehicle.title.ilike(search_filter),
                 Vehicle.brand.ilike(search_filter),
                 Vehicle.model.ilike(search_filter),
-                Vehicle.description.ilike(search_filter)
+                Vehicle.description.ilike(search_filter),
+                Vehicle.seller_keyword.ilike(search_filter)
             )
         )
     
@@ -225,7 +226,7 @@ def api_search():
     if not search_query:
         return jsonify({'vehicles': []})
     
-    # Search in title, brand, model, and description
+    # Search in title, brand, model, description, and seller keyword
     search_filter = f"%{search_query}%"
     vehicles = Vehicle.query.filter(
         Vehicle.is_active == True,
@@ -233,7 +234,8 @@ def api_search():
             Vehicle.title.ilike(search_filter),
             Vehicle.brand.ilike(search_filter),
             Vehicle.model.ilike(search_filter),
-            Vehicle.description.ilike(search_filter)
+            Vehicle.description.ilike(search_filter),
+            Vehicle.seller_keyword.ilike(search_filter)
         )
     ).limit(10).all()
     
@@ -467,6 +469,7 @@ def edit_vehicle(id):
         vehicle.model = request.form.get('model', '')
         vehicle.color = request.form.get('color', '')
         vehicle.tire_condition = request.form.get('tire_condition')
+        vehicle.seller_keyword = request.form.get('seller_keyword', '')
         vehicle.doors = int(request.form['doors']) if request.form.get('doors') else None
         vehicle.engine = request.form.get('engine', '')
         vehicle.condition = request.form.get('condition', '')
@@ -1428,6 +1431,99 @@ def export_client_history_pdf():
         return redirect(url_for('admin_users_vehicles'))
 
 
+
+# Seller Keywords Management Routes
+@app.route('/admin/seller_keywords')
+def admin_seller_keywords():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('panel_login'))
+    
+    # Get statistics
+    total_keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().count()
+    total_vehicles_with_keywords = Vehicle.query.filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).count()
+    vehicles_without_keywords = Vehicle.query.filter(db.or_(Vehicle.seller_keyword == '', Vehicle.seller_keyword.is_(None))).count()
+    
+    avg_vehicles_per_keyword = 0
+    if total_keywords > 0:
+        avg_vehicles_per_keyword = round(total_vehicles_with_keywords / total_keywords, 1)
+    
+    stats = {
+        'total_keywords': total_keywords,
+        'total_vehicles_with_keywords': total_vehicles_with_keywords,
+        'vehicles_without_keywords': vehicles_without_keywords,
+        'avg_vehicles_per_keyword': avg_vehicles_per_keyword
+    }
+    
+    # Get keyword statistics
+    keyword_stats = []
+    keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().all()
+    
+    for keyword_tuple in keywords:
+        keyword = keyword_tuple[0]
+        vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+        
+        total_views = sum(v.views for v in vehicles if v.views)
+        total_clicks = sum(v.clicks for v in vehicles if v.clicks)
+        latest_vehicle_date = max((v.created_at for v in vehicles), default=None)
+        
+        keyword_stats.append({
+            'keyword': keyword,
+            'vehicle_count': len(vehicles),
+            'total_views': total_views,
+            'total_clicks': total_clicks,
+            'latest_vehicle_date': latest_vehicle_date
+        })
+    
+    # Sort by vehicle count descending
+    keyword_stats.sort(key=lambda x: x['vehicle_count'], reverse=True)
+    
+    return render_template('admin_seller_keywords.html', stats=stats, keyword_stats=keyword_stats)
+
+@app.route('/admin/api/keyword-vehicles/<keyword>')
+def api_keyword_vehicles(keyword):
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+    
+    vehicles_data = []
+    for vehicle in vehicles:
+        vehicles_data.append({
+            'id': vehicle.id,
+            'title': vehicle.title,
+            'price_formatted': f"${vehicle.price:,}".replace(',', '.') if vehicle.price else 'Consultar',
+            'brand': vehicle.brand or '',
+            'model': vehicle.model or '',
+            'year': vehicle.year
+        })
+    
+    return jsonify({'success': True, 'vehicles': vehicles_data})
+
+@app.route('/admin/api/update-keyword', methods=['POST'])
+def api_update_keyword():
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    old_keyword = data.get('old_keyword')
+    new_keyword = data.get('new_keyword')
+    
+    if not old_keyword or not new_keyword:
+        return jsonify({'success': False, 'error': 'Faltan parámetros'})
+    
+    # Check if new keyword already exists
+    existing = Vehicle.query.filter_by(seller_keyword=new_keyword).first()
+    if existing and new_keyword != old_keyword:
+        return jsonify({'success': False, 'error': 'La nueva palabra clave ya está en uso'})
+    
+    # Update all vehicles with the old keyword
+    vehicles = Vehicle.query.filter_by(seller_keyword=old_keyword).all()
+    for vehicle in vehicles:
+        vehicle.seller_keyword = new_keyword
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'Palabra clave actualizada. {len(vehicles)} vehículos afectados.'})
 
 # Error handlers
 @app.errorhandler(404)

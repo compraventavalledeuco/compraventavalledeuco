@@ -17,9 +17,12 @@ app.permanent_session_lifetime = timedelta(minutes=15)
 # configure the database
 
 database_url = os.environ.get("DATABASE_URL", "sqlite:///vehicle_marketplace.db")
-# Fix for Heroku PostgreSQL URL format
+
+
+# Fix for Heroku PostgreSQL URL format (postgres:// -> postgresql://)
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
+    print("URL corregida para PostgreSQL:", database_url)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
