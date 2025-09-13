@@ -129,12 +129,13 @@
                             <!-- Vehicle Image -->
                             <div class="row">
                                 <div class="col-md-4">
-                                    {% if request.get_main_image() %}
-                                        <img src="{{ request.get_main_image() }}" 
+                                    {% set main_image = request.get_main_image() %}
+                                    {% if main_image and main_image != "/static/placeholder-car.png" %}
+                                        <img src="{% if main_image.startswith('http') %}{{ main_image }}{% else %}{{ url_for('static', filename=main_image) }}{% endif %}" 
                                              class="img-fluid rounded" 
                                              style="height: 120px; width: 100%; object-fit: cover;"
                                              alt="{{ request.title }}"
-                                             onerror="handleImageError(this)">
+                                             onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
                                     {% else %}
                                         <img src="{{ url_for('static', filename='placeholder-car.png') }}" 
                                              class="img-fluid rounded" 
