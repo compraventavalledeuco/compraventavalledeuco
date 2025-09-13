@@ -68,8 +68,12 @@ class CloudinaryStorage:
             # Generate unique public_id
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             unique_id = str(uuid.uuid4())[:8]
-            filename = secure_filename(file.filename)
-            name_without_ext = os.path.splitext(filename)[0]
+            # Support file-like objects (e.g., BytesIO) that may not have `filename`
+            orig_name = getattr(file, 'filename', None) or getattr(file, 'name', None) or 'upload'
+            filename = secure_filename(orig_name)
+            if not filename:
+                filename = 'upload'
+            name_without_ext = os.path.splitext(filename)[0] or 'image'
             public_id = f"{folder}/{timestamp}_{unique_id}_{name_without_ext}"
             
             print(f"🔄 Attempting Cloudinary upload: {public_id}")
