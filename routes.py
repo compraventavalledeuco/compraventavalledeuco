@@ -369,6 +369,7 @@ def logout():
     session.pop('admin_id', None)
     return redirect(url_for('index'))
 
+@app.route('/admin')
 @app.route('/admin-dashboard')
 def admin_dashboard():
     if not session.get('admin_logged_in'):
