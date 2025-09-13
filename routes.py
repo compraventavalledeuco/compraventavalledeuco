@@ -1579,6 +1579,39 @@ def admin_restore_backup():
     
     return redirect(url_for('admin_backup_dashboard'))
 
+@app.route('/admin/download_backup/<path:backup_file>')
+def admin_download_backup(backup_file):
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('panel_login'))
+    
+    try:
+        import os
+        from flask import send_file
+        
+        # Validate backup file path for security
+        if not backup_file or '..' in backup_file:
+            flash('Archivo de backup inválido', 'error')
+            return redirect(url_for('admin_backup_dashboard'))
+        
+        # Check if file exists
+        if not os.path.exists(backup_file):
+            flash('Archivo de backup no encontrado', 'error')
+            return redirect(url_for('admin_backup_dashboard'))
+        
+        # Get filename for download
+        filename = os.path.basename(backup_file)
+        
+        return send_file(
+            backup_file,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/octet-stream'
+        )
+        
+    except Exception as e:
+        flash(f'Error al descargar backup: {str(e)}', 'error')
+        return redirect(url_for('admin_backup_dashboard'))
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
