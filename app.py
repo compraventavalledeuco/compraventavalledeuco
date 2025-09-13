@@ -195,10 +195,13 @@ with app.app_context():
             logging.info("Admin password updated")
         logging.info("Admin user already exists with ID: " + str(existing_admin.id))
 
-# Inicializar sistema de backup integrado
-from backup_system.backup_integration import init_backup_system
-backup_system = init_backup_system(app)
-logging.info("Sistema de backup integrado y activo")
+# Inicializar sistema de backup integrado (solo en desarrollo local)
+try:
+    from backup_system.backup_integration import init_backup_system
+    backup_system = init_backup_system(app)
+    logging.info("Sistema de backup integrado y activo")
+except ImportError:
+    logging.info("Sistema de backup no disponible en producción")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
