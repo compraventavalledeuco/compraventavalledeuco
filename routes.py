@@ -491,26 +491,30 @@ def edit_vehicle(id):
         vehicle.address = request.form.get('user_address', '')
         
         # Handle image uploads with Cloudinary
+        new_image_urls = []
         for i in range(1, 11):
             image_file = request.files.get(f'image_{i}')
             if image_file and image_file.filename != '':
                 # Upload to Cloudinary
                 upload_result = upload_to_cloudinary(image_file, 'vehicle_images')
                 if upload_result['success']:
-                    setattr(vehicle, f'image_{i}', upload_result['url'])
+                    url = upload_result['url']
+                    setattr(vehicle, f'image_{i}', url)
+                    new_image_urls.append(url)
                 else:
                     flash(f'Error uploading image {i}: {upload_result["error"]}', 'error')
-                
-                if new_image_urls:  # Replace images only if new ones were uploaded
-                    vehicle.images = json.dumps(new_image_urls)
-                    # Set main image index for new images
-                    try:
-                        main_image_index = int(request.form.get('main_image_index', 0))
-                        if main_image_index < 0 or main_image_index >= len(new_image_urls):
-                            main_image_index = 0
-                        vehicle.main_image_index = main_image_index
-                    except (ValueError, TypeError):
-                        vehicle.main_image_index = 0
+        
+        # After processing all files, update gallery if new images were uploaded
+        if new_image_urls:
+            vehicle.images = json.dumps(new_image_urls)
+            # Set main image index for new images
+            try:
+                main_image_index = int(request.form.get('main_image_index', 0))
+                if main_image_index < 0 or main_image_index >= len(new_image_urls):
+                    main_image_index = 0
+                vehicle.main_image_index = main_image_index
+            except (ValueError, TypeError):
+                vehicle.main_image_index = 0
         
         db.session.commit()
         flash('Vehículo actualizado exitosamente', 'success')
