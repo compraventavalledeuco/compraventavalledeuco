@@ -26,11 +26,37 @@ git add templates/
 git add static/
 
 echo.
-echo Agregando documentacion...
+echo Agregando documentacion y guias...
 git add README.md
 git add HEROKU_SETUP.md
+git add HEROKU_BACKUP_SETUP.md
+git add DEPLOYMENT_GUIDE.md
+git add DEPLOY_GITHUB_HEROKU.md
+git add CONFIGURACION_HEROKU_SUPABASE.md
+git add INSTALL_HEROKU_CLI.md
+git add verificar_logs_heroku.md
 git add railway.json
 git add render.yaml
+git add pyproject.toml
+
+echo.
+echo Agregando archivos de configuracion adicionales...
+git add main.py
+git add config_local.py
+git add run_local.py
+git add test_db_connection.py
+
+echo.
+echo Agregando scripts de configuracion...
+git add configurar_heroku_supabase.bat
+git add init_db_heroku.bat
+git add setup_heroku_postgres.bat
+git add test_db_heroku.bat
+git add subir_github.bat
+
+echo.
+echo Agregando sistema de backup...
+git add backup_system/
 
 echo.
 echo Verificando archivos agregados...
