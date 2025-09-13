@@ -167,33 +167,43 @@ def admin_backup_interface():
     return redirect('http://localhost:5001')
 
 # Initialize database and create admin user
-with app.app_context():
-    # Create all tables
-    db.create_all()
-    
-    # Create admin user if not exists
-    from models import Admin
-    
-    # Solo crear admin si no existe para mantener ID consistente
-    existing_admin = Admin.query.filter_by(username="Ryoma94").first()
-    if not existing_admin:
-        admin_password = os.environ.get("ADMIN_PASSWORD", "DiegoPortaz7")
-        admin = Admin(
-            username="Ryoma94",
-            password_hash=generate_password_hash_sha256(admin_password)
-        )
-        db.session.add(admin)
-        db.session.commit()
-        logging.info("Admin user created with password: " + admin_password)
-    else:
-        # Actualizar contraseña si cambió
-        admin_password = os.environ.get("ADMIN_PASSWORD", "DiegoPortaz7")
-        new_hash = generate_password_hash_sha256(admin_password)
-        if existing_admin.password_hash != new_hash:
-            existing_admin.password_hash = new_hash
-            db.session.commit()
-            logging.info("Admin password updated")
-        logging.info("Admin user already exists with ID: " + str(existing_admin.id))
+def init_database():
+    """Initialize database tables and admin user - call this manually when needed"""
+    with app.app_context():
+        try:
+            # Create all tables
+            db.create_all()
+            
+            # Create admin user if not exists
+            from models import Admin
+            
+            # Solo crear admin si no existe para mantener ID consistente
+            existing_admin = Admin.query.filter_by(username="Ryoma94").first()
+            if not existing_admin:
+                admin_password = os.environ.get("ADMIN_PASSWORD", "DiegoPortaz7")
+                admin = Admin(
+                    username="Ryoma94",
+                    password_hash=generate_password_hash_sha256(admin_password)
+                )
+                db.session.add(admin)
+                db.session.commit()
+                logging.info("Admin user created with password: " + admin_password)
+            else:
+                # Actualizar contraseña si cambió
+                admin_password = os.environ.get("ADMIN_PASSWORD", "DiegoPortaz7")
+                new_hash = generate_password_hash_sha256(admin_password)
+                if existing_admin.password_hash != new_hash:
+                    existing_admin.password_hash = new_hash
+                    db.session.commit()
+                    logging.info("Admin password updated")
+                logging.info("Admin user already exists with ID: " + str(existing_admin.id))
+            
+            logging.info("Database initialization completed successfully")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Database initialization failed: {str(e)}")
+            return False
 
 # Inicializar sistema de backup integrado (solo en desarrollo local)
 try:
@@ -203,6 +213,27 @@ try:
 except ImportError:
     logging.info("Sistema de backup no disponible en producción")
 
+@app.route('/admin/init-db')
+@admin_required
+def admin_init_database():
+    """Manual database initialization endpoint for admin use"""
+    success = init_database()
+    if success:
+        return jsonify({'message': 'Database initialized successfully'}), 200
+    else:
+        return jsonify({'error': 'Database initialization failed'}), 500
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    import sys
+    
+    # Check if database initialization is requested via command line
+    if len(sys.argv) > 1 and sys.argv[1] == 'init-db':
+        print("Initializing database...")
+        success = init_database()
+        if success:
+            print("Database initialization completed successfully!")
+        else:
+            print("Database initialization failed!")
+        sys.exit(0)
+    
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
