@@ -188,7 +188,7 @@
                         <div class="row">
                             {% for image in current_images %}
                                 <div class="col-md-3 mb-3">
-                                    <img src="{{ image }}" class="img-fluid rounded" style="height: 150px; width: 100%; object-fit: cover;">
+                                    <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" class="img-fluid rounded" style="height: 150px; width: 100%; object-fit: cover;">
                                     <div class="text-center mt-1">
                                         <small class="text-muted">Imagen {{ loop.index }}</small>
                                     </div>

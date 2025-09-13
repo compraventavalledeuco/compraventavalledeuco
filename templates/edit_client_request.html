@@ -254,12 +254,12 @@
                             {% for image in client_request.get_images_list() %}
                             <div class="col-md-3 mb-3">
                                 <div class="position-relative">
-                                    <img src="{{ image }}" class="img-fluid rounded" 
+                                    <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" class="img-fluid rounded" 
                                          style="height: 150px; width: 100%; object-fit: cover;" 
                                          alt="Imagen del vehículo">
                                     <button type="button" 
                                             class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1 delete-image-btn"
-                                            data-image-url="{{ image }}"
+                                            data-image-url="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}"
                                             title="Eliminar imagen">
                                         <i class="fas fa-trash"></i>
                                     </button>

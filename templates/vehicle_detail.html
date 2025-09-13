@@ -35,11 +35,12 @@
                             <div class="carousel-inner">
                                 {% for image in images %}
                                     <div class="carousel-item {% if loop.first %}active{% endif %}">
-                                        <img src="{{ image }}" class="d-block w-100 vehicle-detail-image lightbox-trigger" 
+                                        <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" 
+                                             class="d-block w-100 vehicle-detail-image lightbox-trigger" 
                                              alt="{{ vehicle.title }}"
                                              data-bs-toggle="modal" 
                                              data-bs-target="#imageModal"
-                                             data-image="{{ image }}"
+                                             data-image="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}"
                                              style="cursor: pointer;"
                                              onerror="handleImageError(this)">
                                     </div>

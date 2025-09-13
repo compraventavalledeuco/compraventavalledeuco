@@ -303,7 +303,7 @@
                                         {% for image in images %}
                                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                                             <a href="{{ url_for('vehicle_detail', id=vehicle.id) }}" class="text-decoration-none">
-                                                <img src="{{ image }}" 
+                                                <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" 
                                                      class="card-img-top vehicle-image" 
                                                      alt="{{ vehicle.title }}"
                                                      onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
@@ -415,10 +415,10 @@
                             <!-- Image for free publications -->
                             <div class="position-relative">
                                 {% if vehicle.get_images_list() %}
-                                    <img src="{{ vehicle.get_main_image() }}" 
+                                    <img src="{% if vehicle.get_main_image().startswith('http') %}{{ vehicle.get_main_image() }}{% else %}{{ url_for('static', filename=vehicle.get_main_image()) }}{% endif %}" 
                                          class="card-img-top vehicle-image" 
                                          alt="{{ vehicle.title }}"
-                                         style="height: 200px; object-fit: cover;"
+                                         style="height: 200px; object-fit: cover;">
                                          onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
                                 {% else %}
                                     <img src="{{ url_for('static', filename='placeholder-car.png') }}" 
