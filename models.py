@@ -65,16 +65,8 @@ class Vehicle(db.Model):
             import json
             try:
                 images = json.loads(self.images)
-                # Convert relative paths to full URLs for Flask
-                processed_images = []
-                for img in images:
-                    if img.startswith('uploads/'):
-                        from flask import url_for
-                        processed_images.append(url_for('static',
-                                                        filename=img))
-                    else:
-                        processed_images.append(img)
-                return processed_images
+                # Return images as-is - let templates handle URL formatting
+                return images
             except:
                 return []
         return []
@@ -87,10 +79,7 @@ class Vehicle(db.Model):
                 images) else 0
             main_image = images[main_index]
 
-            # If it's a local file path, add static/ prefix for Flask url_for
-            if main_image.startswith('uploads/'):
-                from flask import url_for
-                return url_for('static', filename=main_image)
+            # Return main image as-is - let templates handle URL formatting
             return main_image
         
         # Return placeholder for both free and plus plans without images
@@ -301,16 +290,8 @@ class ClientRequest(db.Model):
             import json
             try:
                 images = json.loads(self.images)
-                # Convert relative paths to full URLs for Flask
-                processed_images = []
-                for img in images:
-                    if img.startswith('uploads/'):
-                        from flask import url_for
-                        processed_images.append(url_for('static',
-                                                        filename=img))
-                    else:
-                        processed_images.append(img)
-                return processed_images
+                # Return images as-is - let templates handle URL formatting
+                return images
             except:
                 return []
         return []
