@@ -1439,44 +1439,56 @@ def admin_seller_keywords():
     if not session.get('admin_logged_in'):
         return redirect(url_for('panel_login'))
     
-    # Get statistics
-    total_keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().count()
-    total_vehicles_with_keywords = Vehicle.query.filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).count()
-    vehicles_without_keywords = Vehicle.query.filter(db.or_(Vehicle.seller_keyword == '', Vehicle.seller_keyword.is_(None))).count()
-    
-    avg_vehicles_per_keyword = 0
-    if total_keywords > 0:
-        avg_vehicles_per_keyword = round(total_vehicles_with_keywords / total_keywords, 1)
-    
-    stats = {
-        'total_keywords': total_keywords,
-        'total_vehicles_with_keywords': total_vehicles_with_keywords,
-        'vehicles_without_keywords': vehicles_without_keywords,
-        'avg_vehicles_per_keyword': avg_vehicles_per_keyword
-    }
-    
-    # Get keyword statistics
-    keyword_stats = []
-    keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().all()
-    
-    for keyword_tuple in keywords:
-        keyword = keyword_tuple[0]
-        vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+    try:
+        # Get statistics - with error handling for missing column
+        total_keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().count()
+        total_vehicles_with_keywords = Vehicle.query.filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).count()
+        vehicles_without_keywords = Vehicle.query.filter(db.or_(Vehicle.seller_keyword == '', Vehicle.seller_keyword.is_(None))).count()
         
-        total_views = sum(v.views for v in vehicles if v.views)
-        total_clicks = sum(v.clicks for v in vehicles if v.clicks)
-        latest_vehicle_date = max((v.created_at for v in vehicles), default=None)
+        avg_vehicles_per_keyword = 0
+        if total_keywords > 0:
+            avg_vehicles_per_keyword = round(total_vehicles_with_keywords / total_keywords, 1)
         
-        keyword_stats.append({
-            'keyword': keyword,
-            'vehicle_count': len(vehicles),
-            'total_views': total_views,
-            'total_clicks': total_clicks,
-            'latest_vehicle_date': latest_vehicle_date
-        })
-    
-    # Sort by vehicle count descending
-    keyword_stats.sort(key=lambda x: x['vehicle_count'], reverse=True)
+        stats = {
+            'total_keywords': total_keywords,
+            'total_vehicles_with_keywords': total_vehicles_with_keywords,
+            'vehicles_without_keywords': vehicles_without_keywords,
+            'avg_vehicles_per_keyword': avg_vehicles_per_keyword
+        }
+        
+        # Get keyword statistics
+        keyword_stats = []
+        keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().all()
+        
+        for keyword_tuple in keywords:
+            keyword = keyword_tuple[0]
+            vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+            
+            total_views = sum(v.views for v in vehicles if v.views)
+            total_clicks = sum(v.clicks for v in vehicles if v.clicks)
+            latest_vehicle_date = max((v.created_at for v in vehicles), default=None)
+            
+            keyword_stats.append({
+                'keyword': keyword,
+                'vehicle_count': len(vehicles),
+                'total_views': total_views,
+                'total_clicks': total_clicks,
+                'latest_vehicle_date': latest_vehicle_date
+            })
+        
+        # Sort by vehicle count descending
+        keyword_stats.sort(key=lambda x: x['vehicle_count'], reverse=True)
+        
+    except Exception as e:
+        # If seller_keyword column doesn't exist, show placeholder data
+        stats = {
+            'total_keywords': 0,
+            'total_vehicles_with_keywords': 0,
+            'vehicles_without_keywords': Vehicle.query.count(),
+            'avg_vehicles_per_keyword': 0
+        }
+        keyword_stats = []
+        flash('La funcionalidad de palabras clave está en proceso de configuración. La columna de base de datos será agregada pronto.', 'info')
     
     return render_template('admin_seller_keywords.html', stats=stats, keyword_stats=keyword_stats)
 
@@ -1485,46 +1497,52 @@ def api_keyword_vehicles(keyword):
     if not session.get('admin_logged_in'):
         return jsonify({'success': False, 'error': 'No autorizado'}), 401
     
-    vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
-    
-    vehicles_data = []
-    for vehicle in vehicles:
-        vehicles_data.append({
-            'id': vehicle.id,
-            'title': vehicle.title,
-            'price_formatted': f"${vehicle.price:,}".replace(',', '.') if vehicle.price else 'Consultar',
-            'brand': vehicle.brand or '',
-            'model': vehicle.model or '',
-            'year': vehicle.year
-        })
-    
-    return jsonify({'success': True, 'vehicles': vehicles_data})
+    try:
+        vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+        
+        vehicles_data = []
+        for vehicle in vehicles:
+            vehicles_data.append({
+                'id': vehicle.id,
+                'title': vehicle.title,
+                'price_formatted': f"${vehicle.price:,}".replace(',', '.') if vehicle.price else 'Consultar',
+                'brand': vehicle.brand or '',
+                'model': vehicle.model or '',
+                'year': vehicle.year
+            })
+        
+        return jsonify({'success': True, 'vehicles': vehicles_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Funcionalidad no disponible temporalmente'})
 
 @app.route('/admin/api/update-keyword', methods=['POST'])
 def api_update_keyword():
     if not session.get('admin_logged_in'):
         return jsonify({'success': False, 'error': 'No autorizado'}), 401
     
-    data = request.get_json()
-    old_keyword = data.get('old_keyword')
-    new_keyword = data.get('new_keyword')
-    
-    if not old_keyword or not new_keyword:
-        return jsonify({'success': False, 'error': 'Faltan parámetros'})
-    
-    # Check if new keyword already exists
-    existing = Vehicle.query.filter_by(seller_keyword=new_keyword).first()
-    if existing and new_keyword != old_keyword:
-        return jsonify({'success': False, 'error': 'La nueva palabra clave ya está en uso'})
-    
-    # Update all vehicles with the old keyword
-    vehicles = Vehicle.query.filter_by(seller_keyword=old_keyword).all()
-    for vehicle in vehicles:
-        vehicle.seller_keyword = new_keyword
-    
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': f'Palabra clave actualizada. {len(vehicles)} vehículos afectados.'})
+    try:
+        data = request.get_json()
+        old_keyword = data.get('old_keyword')
+        new_keyword = data.get('new_keyword')
+        
+        if not old_keyword or not new_keyword:
+            return jsonify({'success': False, 'error': 'Faltan parámetros'})
+        
+        # Check if new keyword already exists
+        existing = Vehicle.query.filter_by(seller_keyword=new_keyword).first()
+        if existing and new_keyword != old_keyword:
+            return jsonify({'success': False, 'error': 'La nueva palabra clave ya está en uso'})
+        
+        # Update all vehicles with the old keyword
+        vehicles = Vehicle.query.filter_by(seller_keyword=old_keyword).all()
+        for vehicle in vehicles:
+            vehicle.seller_keyword = new_keyword
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Palabra clave actualizada. {len(vehicles)} vehículos afectados.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Funcionalidad no disponible temporalmente'})
 
 # Error handlers
 @app.errorhandler(404)
