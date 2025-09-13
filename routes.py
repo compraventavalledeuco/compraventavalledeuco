@@ -1557,7 +1557,7 @@ def admin_restore_backup():
             return redirect(url_for('admin_backup_dashboard'))
         
         # Create a backup before restoring
-        from backup_system.backup_manager import BackupManager
+        from backup_system.backup_system import BackupManager
         backup_manager = BackupManager()
         
         # Create pre-restore backup

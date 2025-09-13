@@ -101,6 +101,7 @@
                 </div>
             </div>
 
+            {% if vehicle.is_plus %}
             <!-- Vehicle Specifications -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -208,6 +209,7 @@
                     <p class="card-text">{{ vehicle.description }}</p>
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <!-- Vehicle Info & Actions -->
@@ -267,6 +269,28 @@
                             </div>
                         {% endif %}
                     </div>
+
+                    <!-- Share Buttons -->
+                    <div class="d-grid gap-2 mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100" 
+                                        id="sharePublicationBtn"
+                                        data-url="{{ request.url }}"
+                                        data-title="{{ vehicle.title }} - {{ vehicle.format_price_with_currency() }}">
+                                    <i class="fas fa-share me-2"></i>Compartir Publicación
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-secondary w-100" 
+                                        id="shareSellerBtn"
+                                        data-seller-keyword="{{ vehicle.seller_keyword or '' }}"
+                                        data-seller-name="{{ vehicle.contact_name or 'Vendedor' }}">
+                                    <i class="fas fa-user-share me-2"></i>Compartir Vendedor
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -296,6 +320,7 @@
         </div>
     </div>
 
+    {% if vehicle.is_plus %}
     <!-- Related Vehicles Section -->
     <div class="row mt-5">
         <div class="col-12">
@@ -309,6 +334,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 
@@ -344,37 +370,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Share profile functionality
-    const shareBtn = document.getElementById('shareProfileBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', function() {
+    // Share publication functionality
+    const sharePublicationBtn = document.getElementById('sharePublicationBtn');
+    if (sharePublicationBtn) {
+        sharePublicationBtn.addEventListener('click', function() {
             const url = this.getAttribute('data-url');
             const title = this.getAttribute('data-title');
             
             if (navigator.share) {
                 navigator.share({
                     title: title,
+                    text: 'Mira este vehículo: ' + title,
                     url: url
                 }).catch(console.error);
             } else {
                 // Fallback: copy to clipboard
                 navigator.clipboard.writeText(url).then(function() {
-                    // Show temporary notification
-                    const originalText = shareBtn.innerHTML;
-                    shareBtn.innerHTML = '<i class="fas fa-check me-2"></i>¡Copiado!';
-                    shareBtn.classList.remove('btn-primary');
-                    shareBtn.classList.add('btn-success');
-                    
-                    setTimeout(function() {
-                        shareBtn.innerHTML = originalText;
-                        shareBtn.classList.remove('btn-success');
-                        shareBtn.classList.add('btn-primary');
-                    }, 2000);
+                    showShareSuccess(sharePublicationBtn, 'btn-outline-primary');
                 }).catch(function() {
-                    alert('URL del perfil: ' + url + String.fromCharCode(10) + String.fromCharCode(10) + 'Copia este enlace para compartir.');
+                    alert('URL de la publicación: ' + url + String.fromCharCode(10) + String.fromCharCode(10) + 'Copia este enlace para compartir.');
                 });
             }
         });
+    }
+    
+    // Share seller functionality
+    const shareSellerBtn = document.getElementById('shareSellerBtn');
+    if (shareSellerBtn) {
+        shareSellerBtn.addEventListener('click', function() {
+            const sellerKeyword = this.getAttribute('data-seller-keyword');
+            const sellerName = this.getAttribute('data-seller-name');
+            
+            let shareUrl, shareTitle;
+            
+            if (sellerKeyword && sellerKeyword.trim() !== '') {
+                // Create URL to search for seller's vehicles by keyword
+                shareUrl = window.location.origin + '/?search=' + encodeURIComponent(sellerKeyword);
+                shareTitle = 'Todos los vehículos de ' + sellerName;
+            } else {
+                // Fallback: share current vehicle as seller example
+                shareUrl = window.location.href;
+                shareTitle = 'Vehículos de ' + sellerName;
+            }
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: shareTitle,
+                    text: 'Mira todos los vehículos de este vendedor: ' + sellerName,
+                    url: shareUrl
+                }).catch(console.error);
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(shareUrl).then(function() {
+                    showShareSuccess(shareSellerBtn, 'btn-outline-secondary');
+                }).catch(function() {
+                    alert('Perfil del vendedor: ' + shareUrl + String.fromCharCode(10) + String.fromCharCode(10) + 'Copia este enlace para ver todos los vehículos de ' + sellerName);
+                });
+            }
+        });
+    }
+    
+    // Helper function to show share success
+    function showShareSuccess(button, originalClass) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-2"></i>¡Copiado!';
+        button.classList.remove(originalClass);
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add(originalClass);
+        }, 2000);
     }
     
     // Track call clicks

@@ -169,39 +169,36 @@ class BackupIntegration:
     def get_backup_status(self):
         """Obtiene el estado actual del sistema de backup"""
         try:
-            # En Heroku usar adaptador especial
-            if self.is_heroku:
-                from .heroku_backup_adapter import HerokuBackupAdapter
-                adapter = HerokuBackupAdapter()
-                heroku_status = adapter.get_backup_status()
-                
-                # Convertir a formato esperado
-                status = 'healthy' if heroku_status['s3_configured'] else 'warning'
-                if heroku_status['backup_count'] == 0:
-                    status = 'no_backups'
-                
-                return {
-                    'status': status,
-                    'last_backup': heroku_status['last_backup'],
-                    'backup_count': heroku_status['backup_count'],
-                    'system_enabled': self.backup_enabled,
-                    'platform': 'heroku',
-                    's3_configured': heroku_status['s3_configured']
-                }
-            
-            # Verificar último backup (solo local)
+            # Verificar último backup (tanto local como Heroku)
             backup_dirs = ['backups/daily', 'backups/weekly', 'backups/monthly', 'backups']
             latest_backup = None
             backup_count = 0
             
+            # Buscar en directorios locales primero
+            project_root = Path(__file__).parent.parent.absolute()
             for backup_dir in backup_dirs:
-                backup_path = self.project_path / backup_dir
+                backup_path = project_root / backup_dir
                 if backup_path.exists():
                     for backup_file in backup_path.glob('*.zip'):
                         backup_count += 1
                         file_time = datetime.fromtimestamp(backup_file.stat().st_mtime)
                         if latest_backup is None or file_time > latest_backup:
                             latest_backup = file_time
+            
+            # En Heroku también verificar S3 si está configurado
+            if self.is_heroku:
+                try:
+                    from .heroku_backup_adapter import HerokuBackupAdapter
+                    adapter = HerokuBackupAdapter()
+                    heroku_status = adapter.get_backup_status()
+                    
+                    # Agregar backups de S3 al conteo
+                    if heroku_status['s3_configured']:
+                        backup_count += heroku_status['backup_count']
+                        if heroku_status['last_backup'] and (latest_backup is None or heroku_status['last_backup'] > latest_backup):
+                            latest_backup = heroku_status['last_backup']
+                except Exception as e:
+                    logging.warning(f"Error verificando backups de Heroku: {e}")
             
             # Calcular estado
             if latest_backup:

@@ -166,8 +166,21 @@ def admin_backup_status():
 @app.route('/admin/backup/interface')
 @admin_required
 def admin_backup_interface():
-    """Redirige a la interfaz web completa de backup"""
-    return redirect('http://localhost:5001')
+    """Interfaz web completa de backup integrada"""
+    try:
+        from backup_system.backup_web_interface import BackupWebInterface
+        backup_interface = BackupWebInterface()
+        
+        # Obtener estado y lista de backups
+        status = backup_interface.get_backup_status()
+        backup_list = backup_interface.get_backup_list()
+        
+        return render_template('admin_backup_interface.html', 
+                             backup_status=status, 
+                             backup_list=backup_list)
+    except Exception as e:
+        flash(f'Error al cargar interfaz de backup: {str(e)}', 'error')
+        return redirect(url_for('admin_backup_dashboard'))
 
 # Initialize database and create admin user
 def init_database():
