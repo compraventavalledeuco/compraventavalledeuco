@@ -27,11 +27,23 @@ En tu Dashboard de Cloudinary encontrarás:
 
 ### 3. Configurar Variables en Heroku
 
+**Opción 1: Usando CLOUDINARY_URL (Recomendado)**
 ```bash
-heroku config:set CLOUDINARY_CLOUD_NAME="tu-cloud-name"
-heroku config:set CLOUDINARY_API_KEY="123456789012345"
-heroku config:set CLOUDINARY_API_SECRET="abcdef123456789"
+heroku config:set CLOUDINARY_URL="cloudinary://<your_api_key>:<your_api_secret>@dihtlqcwo"
 ```
+
+**Opción 2: Variables individuales**
+```bash
+heroku config:set CLOUDINARY_CLOUD_NAME="dihtlqcwo"
+heroku config:set CLOUDINARY_API_KEY="tu-api-key"
+heroku config:set CLOUDINARY_API_SECRET="tu-api-secret"
+```
+
+**Para tu caso específico:**
+```bash
+heroku config:set CLOUDINARY_URL="cloudinary://<your_api_key>:<your_api_secret>@dihtlqcwo"
+```
+(Reemplaza `<your_api_key>` y `<your_api_secret>` con tus credenciales reales)
 
 ### 4. Actualizar requirements.txt
 

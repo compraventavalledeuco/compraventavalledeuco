@@ -6,9 +6,13 @@ import logging
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, make_response
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta
+import uuid
+import base64
+import re
+from cloudinary_storage import upload_to_cloudinary, delete_from_cloudinary
 from app import app, db
 from models import Vehicle, Admin, Click, VehicleView, ClientRequest, PageVisit, Gestor
-from datetime import datetime
 import urllib.parse
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -486,16 +490,16 @@ def edit_vehicle(id):
         vehicle.location = request.form.get('user_location', '')
         vehicle.address = request.form.get('user_address', '')
         
-        # Handle image uploads
+        # Handle image uploads with Cloudinary
         for i in range(1, 11):
             image_file = request.files.get(f'image_{i}')
             if image_file and image_file.filename != '':
-                filename = secure_filename(image_file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"{timestamp}_{filename}"
-                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                image_file.save(image_path)
-                setattr(vehicle, f'image_{i}', filename)
+                # Upload to Cloudinary
+                upload_result = upload_to_cloudinary(image_file, 'vehicle_images')
+                if upload_result['success']:
+                    setattr(vehicle, f'image_{i}', upload_result['url'])
+                else:
+                    flash(f'Error uploading image {i}: {upload_result["error"]}', 'error')
                 
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     vehicle.images = json.dumps(new_image_urls)
@@ -667,17 +671,16 @@ def client_request():
                     unique_id = str(uuid.uuid4())[:8]
                     filename = f"client_{timestamp}_{unique_id}.{ext}"
                     
-                    # Ensure upload directory exists
-                    upload_dir = app.config['UPLOAD_FOLDER']
-                    os.makedirs(upload_dir, exist_ok=True)
+                    # Upload to Cloudinary
+                    from io import BytesIO
+                    file_obj = BytesIO(image_binary)
+                    file_obj.name = filename
                     
-                    # Save file
-                    file_path = os.path.join(upload_dir, filename)
-                    with open(file_path, 'wb') as f:
-                        f.write(image_binary)
-                    
-                    # Store relative URL
-                    image_urls.append(f"uploads/{filename}")
+                    upload_result = upload_to_cloudinary(file_obj, 'vehicle_images')
+                    if upload_result['success']:
+                        image_urls.append(upload_result['url'])
+                    else:
+                        print(f"Error uploading image {image_index}: {upload_result['error']}")
                     
                 except Exception as e:
                     print(f"Error processing image {image_index}: {e}")
@@ -694,16 +697,12 @@ def client_request():
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                     filename = f"client_{timestamp}_{filename}"
                     
-                    # Ensure upload directory exists
-                    upload_dir = app.config['UPLOAD_FOLDER']
-                    os.makedirs(upload_dir, exist_ok=True)
-                    
-                    # Save file
-                    file_path = os.path.join(upload_dir, filename)
-                    file.save(file_path)
-                    
-                    # Store relative URL
-                    image_urls.append(f"uploads/{filename}")
+                    # Upload to Cloudinary
+                    upload_result = upload_to_cloudinary(file, 'vehicle_images')
+                    if upload_result['success']:
+                        image_urls.append(upload_result['url'])
+                    else:
+                        print(f"Error uploading image: {upload_result['error']}")
         
         # Get main image index from form
         try:
@@ -860,10 +859,12 @@ def edit_client_request(request_id):
                         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                         filename = f"client_{timestamp}_{filename}"
                         
-                        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                        file.save(file_path)
-                        
-                        new_image_urls.append(f"uploads/{filename}")
+                        # Upload to Cloudinary
+                        upload_result = upload_to_cloudinary(file, 'vehicle_images')
+                        if upload_result['success']:
+                            new_image_urls.append(upload_result['url'])
+                        else:
+                            flash(f'Error uploading image: {upload_result["error"]}', 'error')
                 
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     client_request.images = json.dumps(new_image_urls)
@@ -1127,10 +1128,13 @@ def admin_add_gestor():
                     name, ext = os.path.splitext(filename)
                     unique_filename = f"{uuid.uuid4().hex[:8]}_{name}{ext}"
                     
-                    # Save file
-                    upload_path = os.path.join(app.root_path, 'static', 'uploads', 'gestores', unique_filename)
-                    file.save(upload_path)
-                    image_filename = unique_filename
+                    # Upload to Cloudinary
+                    upload_result = upload_to_cloudinary(file, 'gestores')
+                    if upload_result['success']:
+                        image_filename = upload_result['url']
+                    else:
+                        flash(f'Error uploading gestor image: {upload_result["error"]}', 'error')
+                        image_filename = None
             
             gestor = Gestor(
                 name=request.form.get('name'),
@@ -1187,9 +1191,12 @@ def admin_edit_gestor(gestor_id):
                     name, ext = os.path.splitext(filename)
                     unique_filename = f"{uuid.uuid4().hex[:8]}_{name}{ext}"
                     
-                    upload_path = os.path.join(app.root_path, 'static', 'uploads', 'gestores', unique_filename)
-                    file.save(upload_path)
-                    gestor.image_filename = unique_filename
+                    # Upload to Cloudinary
+                    upload_result = upload_to_cloudinary(file, 'gestores')
+                    if upload_result['success']:
+                        gestor.image_filename = upload_result['url']
+                    else:
+                        flash(f'Error uploading gestor image: {upload_result["error"]}', 'error')
             
             gestor.name = request.form.get('name')
             gestor.business_name = request.form.get('business_name')
@@ -1277,9 +1284,13 @@ def admin_new_gestor():
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                     filename = f"gestor_{timestamp}_{filename}"
                     
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    file.save(file_path)
-                    image_url = f"uploads/{filename}"
+                    # Upload to Cloudinary
+                    upload_result = upload_to_cloudinary(file, 'gestores')
+                    if upload_result['success']:
+                        image_url = upload_result['url']
+                    else:
+                        flash(f'Error uploading gestor image: {upload_result["error"]}', 'error')
+                        image_url = None
             
             gestor = Gestor(
                 name=request.form['name'],

@@ -16,9 +16,26 @@ from werkzeug.utils import secure_filename
 class CloudinaryStorage:
     def __init__(self):
         """Initialize Cloudinary with environment variables"""
-        self.cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME')
-        self.api_key = os.environ.get('CLOUDINARY_API_KEY')
-        self.api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+        # Try CLOUDINARY_URL first (single variable format)
+        cloudinary_url = os.environ.get('CLOUDINARY_URL')
+        
+        if cloudinary_url:
+            # Parse cloudinary://api_key:api_secret@cloud_name format
+            import re
+            match = re.match(r'cloudinary://([^:]+):([^@]+)@(.+)', cloudinary_url)
+            if match:
+                self.api_key = match.group(1)
+                self.api_secret = match.group(2)
+                self.cloud_name = match.group(3)
+            else:
+                self.enabled = False
+                logging.error("Invalid CLOUDINARY_URL format")
+                return
+        else:
+            # Fallback to individual environment variables
+            self.cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME')
+            self.api_key = os.environ.get('CLOUDINARY_API_KEY')
+            self.api_secret = os.environ.get('CLOUDINARY_API_SECRET')
         
         if self.cloud_name and self.api_key and self.api_secret:
             cloudinary.config(
@@ -28,6 +45,7 @@ class CloudinaryStorage:
                 secure=True
             )
             self.enabled = True
+            logging.info(f"Cloudinary configured successfully with cloud: {self.cloud_name}")
         else:
             self.enabled = False
             logging.warning("Cloudinary credentials not configured. Using local storage.")
