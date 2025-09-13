@@ -1544,6 +1544,41 @@ def api_update_keyword():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Funcionalidad no disponible temporalmente'})
 
+@app.route('/admin/restore_backup', methods=['POST'])
+def admin_restore_backup():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('panel_login'))
+    
+    try:
+        backup_file = request.form.get('backup_file')
+        
+        if not backup_file:
+            flash('Debe seleccionar un archivo de backup', 'error')
+            return redirect(url_for('admin_backup_dashboard'))
+        
+        # Create a backup before restoring
+        from backup_system.backup_manager import BackupManager
+        backup_manager = BackupManager()
+        
+        # Create pre-restore backup
+        pre_restore_backup = backup_manager.create_backup(backup_type='pre_restore')
+        
+        if pre_restore_backup['success']:
+            flash(f'Backup de seguridad creado: {pre_restore_backup["filename"]}', 'info')
+        
+        # Attempt to restore the selected backup
+        restore_result = backup_manager.restore_backup(backup_file)
+        
+        if restore_result['success']:
+            flash('Backup restaurado exitosamente', 'success')
+        else:
+            flash(f'Error al restaurar backup: {restore_result["error"]}', 'error')
+            
+    except Exception as e:
+        flash(f'Error durante la restauración: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_backup_dashboard'))
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
