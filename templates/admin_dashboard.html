@@ -145,12 +145,13 @@
                                             </td>
                                             <td>
                                                 {% if vehicle.is_plus %}
-                                                    {% if vehicle.get_main_image() %}
-                                                        <img src="{{ vehicle.get_main_image() }}" 
+                                                    {% set main_img = vehicle.get_main_image() %}
+                                                    {% if main_img %}
+                                                        <img src="{% if main_img.startswith('http') %}{{ main_img }}{% else %}{{ url_for('static', filename=main_img) }}{% endif %}" 
                                                              class="rounded" 
                                                              style="width: 60px; height: 45px; object-fit: cover;"
                                                              alt="{{ vehicle.title }}"
-                                                             onerror="this.src='/static/placeholder-car.png';">
+                                                             onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}';">
                                                     {% else %}
                                                         <div class="rounded d-flex align-items-center justify-content-center bg-light border" 
                                                              style="width: 60px; height: 45px;">
