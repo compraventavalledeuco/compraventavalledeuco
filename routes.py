@@ -674,6 +674,9 @@ def client_request():
             flash('Debes proporcionar al menos un número de contacto (WhatsApp o llamada)', 'danger')
             return render_template('client_request.html')
         
+        # Optional seller keyword
+        seller_keyword = request.form.get('seller_keyword', '').strip()
+
         client_request = ClientRequest(
             full_name=request.form['full_name'],
             dni=request.form['dni'].replace('.', ''),  # Remove dots from DNI
@@ -682,6 +685,7 @@ def client_request():
             phone_number=whatsapp_number or call_number,  # Legacy field compatibility
             location=request.form['location'],
             address=request.form.get('address', ''),
+            seller_keyword=seller_keyword if seller_keyword else None,
             title=request.form['title'],
             description=request.form['description'],
             price=int(price_str),
@@ -791,6 +795,34 @@ def admin_pending_requests():
     
     return render_template('admin_pending_requests.html', requests=pending_requests)
 
+# Public seller profile route
+@app.route('/vendedor/<keyword>')
+def seller_profile(keyword):
+    # List all active vehicles for a given seller keyword (case-insensitive)
+    try:
+        vehicles = Vehicle.query.filter(
+            Vehicle.is_active == True,
+            Vehicle.seller_keyword.ilike(keyword)
+        ).order_by(
+            Vehicle.is_plus.desc(),
+            Vehicle.created_at.desc()
+        ).all()
+
+        # If no exact ilike match, try contains to be forgiving
+        if not vehicles:
+            vehicles = Vehicle.query.filter(
+                Vehicle.is_active == True,
+                Vehicle.seller_keyword.ilike(f"%{keyword}%")
+            ).order_by(
+                Vehicle.is_plus.desc(),
+                Vehicle.created_at.desc()
+            ).all()
+
+        return render_template('seller_profile.html', keyword=keyword, vehicles=vehicles)
+    except Exception as e:
+        flash(f'Error cargando perfil del vendedor: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
 @app.route('/admin/procesar-solicitud/<int:request_id>/<action>')
 def process_client_request(request_id, action):
     if not session.get('admin_logged_in'):
@@ -842,10 +874,11 @@ def process_client_request(request_id, action):
                 transmission=client_request.transmission,
                 color=client_request.color,
                 images=client_request.images,
-                main_image_index=main_image_index,
+                main_image_index=client_request.main_image_index,
                 whatsapp_number=client_request.whatsapp_number,
                 call_number=client_request.call_number,
                 is_plus=(client_request.publication_type == 'plus'),
+                seller_keyword=client_request.seller_keyword,
                 client_request_id=client_request.id,
                 premium_duration_months=duration_months
             )
@@ -890,8 +923,10 @@ def edit_client_request(request_id):
         
         client_request.full_name = request.form['full_name']
         client_request.dni = request.form['dni']
-        client_request.phone_number = request.form['phone_number']
-        client_request.location = request.form['location']
+        client_request.seller_keyword = request.form.get('seller_keyword', '').strip() or None
+        client_request.email = request.form.get('email', '')
+        client_request.phone_number = request.form.get('phone_number', '')
+        client_request.location = request.form.get('location', '')
         client_request.address = request.form.get('address', '')
         client_request.title = request.form['title']
         client_request.description = request.form['description']

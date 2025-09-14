@@ -58,8 +58,9 @@ def generate_password_hash_sha256(password):
     
     return full_hash
 
-# Import routes after db is initialized
-import routes
+# Import routes after db is initialized, unless explicitly skipped (e.g., for lightweight scripts/migrations)
+if not os.environ.get("SKIP_ROUTES"):
+    import routes
 
 # ========== RUTAS DE SISTEMA DE BACKUP ==========
 from flask import render_template, request, redirect, url_for, session, flash, jsonify, send_file

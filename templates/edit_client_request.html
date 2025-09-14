@@ -80,6 +80,15 @@
                                        value="{{ client_request.dni }}" pattern="[0-9]{7,8}" required>
                                 <div class="invalid-feedback">Por favor ingresa un DNI válido.</div>
                             </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="seller_keyword" class="form-label">
+                                    <i class="fas fa-key me-2"></i>Palabra Clave del Vendedor (Opcional)
+                                </label>
+                                <input type="text" class="form-control" id="seller_keyword" name="seller_keyword" 
+                                       value="{{ client_request.seller_keyword or '' }}" placeholder="Ej: AUTOSDIEGO o frase corta">
+                                <div class="form-text">Sirve para agrupar vehículos del mismo vendedor. Perfil: /vendedor/TU_PALABRA</div>
+                            </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label for="phone_number" class="form-label">

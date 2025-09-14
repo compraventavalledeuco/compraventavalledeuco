@@ -291,6 +291,13 @@
                                 </button>
                             </div>
                         </div>
+                        {% if vehicle.seller_keyword %}
+                        <div class="text-center mt-2">
+                            <a class="small" href="{{ url_for('seller_profile', keyword=vehicle.seller_keyword) }}">
+                                <i class="fas fa-user me-1"></i>Ver perfil del vendedor: {{ vehicle.seller_keyword }}
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -405,8 +412,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let shareUrl, shareTitle;
             
             if (sellerKeyword && sellerKeyword.trim() !== '') {
-                // Create URL to search for seller's vehicles by keyword
-                shareUrl = window.location.origin + '/?search=' + encodeURIComponent(sellerKeyword);
+                // Create URL to seller profile by keyword
+                shareUrl = window.location.origin + '/vendedor/' + encodeURIComponent(sellerKeyword);
                 shareTitle = 'Todos los vehículos de ' + sellerName;
             } else {
                 // Fallback: share current vehicle as seller example

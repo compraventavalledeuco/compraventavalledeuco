@@ -248,6 +248,9 @@ class ClientRequest(db.Model):
                          nullable=False)  # Tunuyán, Tupungato, San Carlos
     address = db.Column(db.String(500), nullable=True)  # Optional address
 
+    # Seller grouping
+    seller_keyword = db.Column(db.String(50), nullable=True)  # Optional seller keyword to group vehicles by seller
+
     # Vehicle information
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
