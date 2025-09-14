@@ -63,6 +63,8 @@ echo Agregando scripts de inicializacion de produccion...
 git add init_production_db.py
 git add setup_production.bat
 git add add_sample_data.py
+git add add_seller_keyword_to_client_request.py
+git add migrate_local_images_to_cloudinary.py
 
 
 echo.
@@ -77,7 +79,7 @@ git status
 
 echo.
 echo Haciendo commit...
-git commit -m "Actualizar configuracion de base de datos y archivos esenciales"
+git commit -m "Seller Profile + ClientRequest.seller_keyword + scripts de migracion a Cloudinary"
 
 echo.
 echo Subiendo a GitHub...

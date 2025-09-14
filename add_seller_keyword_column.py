@@ -10,15 +10,29 @@ def add_seller_keyword_column():
     """Add seller_keyword column to vehicle table"""
     with app.app_context():
         try:
-            # Check if column already exists
-            with db.engine.connect() as conn:
-                result = conn.execute(db.text("""
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name='vehicle' AND column_name='seller_keyword';
-                """))
-                
-                if result.fetchone():
+            engine = db.engine
+            dialect = engine.dialect.name
+            with engine.connect() as conn:
+                column_exists = False
+                if dialect == 'sqlite':
+                    # Use PRAGMA to inspect columns
+                    pragma_res = conn.execute(db.text("PRAGMA table_info(vehicle);"))
+                    for row in pragma_res:
+                        # row[1] is column name
+                        if str(row[1]).lower() == 'seller_keyword':
+                            column_exists = True
+                            break
+                else:
+                    # Assume Postgres or other supporting information_schema
+                    result = conn.execute(db.text("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name='vehicle' AND column_name='seller_keyword';
+                    """))
+                    if result.fetchone():
+                        column_exists = True
+
+                if column_exists:
                     print("Column seller_keyword already exists")
                     return
                 
