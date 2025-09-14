@@ -798,30 +798,48 @@ def admin_pending_requests():
 # Public seller profile route
 @app.route('/vendedor/<keyword>')
 def seller_profile(keyword):
-    # List all active vehicles for a given seller keyword (case-insensitive)
-    try:
-        vehicles = Vehicle.query.filter(
-            Vehicle.is_active == True,
-            Vehicle.seller_keyword.ilike(keyword)
-        ).order_by(
-            Vehicle.is_plus.desc(),
-            Vehicle.created_at.desc()
-        ).all()
-
-        # If no exact ilike match, try contains to be forgiving
-        if not vehicles:
-            vehicles = Vehicle.query.filter(
-                Vehicle.is_active == True,
-                Vehicle.seller_keyword.ilike(f"%{keyword}%")
-            ).order_by(
-                Vehicle.is_plus.desc(),
-                Vehicle.created_at.desc()
-            ).all()
-
-        return render_template('seller_profile.html', keyword=keyword, vehicles=vehicles)
-    except Exception as e:
-        flash(f'Error cargando perfil del vendedor: {str(e)}', 'error')
-        return redirect(url_for('index'))
+    """Página de perfil del vendedor que muestra todos sus vehículos"""
+    # Track page visit
+    track_page_visit(f'seller_profile_{keyword}')
+    
+    # Get all vehicles for this seller keyword
+    vehicles = Vehicle.query.filter_by(seller_keyword=keyword, is_active=True).order_by(
+        Vehicle.is_plus.desc(),  # Plus vehicles first
+        Vehicle.created_at.desc()  # Then by newest first
+    ).all()
+    
+    if not vehicles:
+        # If no vehicles found, redirect to main page with search
+        return redirect(url_for('index', search=keyword))
+    
+    # Get seller information from the first vehicle
+    seller_info = {
+        'keyword': keyword,
+        'name': vehicles[0].full_name if vehicles[0].full_name else 'Vendedor',
+        'location': vehicles[0].location if vehicles[0].location else '',
+        'whatsapp': vehicles[0].whatsapp_number if vehicles[0].whatsapp_number else '',
+        'total_vehicles': len(vehicles)
+    }
+    
+    # Calculate statistics
+    total_views = 0
+    total_clicks = 0
+    for vehicle in vehicles:
+        vehicle_views = VehicleView.query.filter_by(vehicle_id=vehicle.id).count()
+        vehicle_clicks = Click.query.filter_by(vehicle_id=vehicle.id).count()
+        total_views += vehicle_views
+        total_clicks += vehicle_clicks
+    
+    seller_stats = {
+        'total_views': total_views,
+        'total_clicks': total_clicks,
+        'avg_price': sum(v.price for v in vehicles) // len(vehicles) if vehicles else 0
+    }
+    
+    return render_template('seller_profile.html', 
+                         vehicles=vehicles, 
+                         seller_info=seller_info,
+                         seller_stats=seller_stats)
 
 @app.route('/admin/procesar-solicitud/<int:request_id>/<action>')
 def process_client_request(request_id, action):
@@ -1607,50 +1625,6 @@ def admin_seller_keywords():
     
     return render_template('admin_seller_keywords.html', stats=sidebar_stats, keyword_stats=keyword_stats, keyword_page_stats=stats)
 
-@app.route('/vendedor/<keyword>')
-def seller_profile(keyword):
-    """Página de perfil del vendedor que muestra todos sus vehículos"""
-    # Track page visit
-    track_page_visit(f'seller_profile_{keyword}')
-    
-    # Get all vehicles for this seller keyword
-    vehicles = Vehicle.query.filter_by(seller_keyword=keyword, is_active=True).order_by(
-        Vehicle.is_plus.desc(),  # Plus vehicles first
-        Vehicle.created_at.desc()  # Then by newest first
-    ).all()
-    
-    if not vehicles:
-        # If no vehicles found, redirect to main page with search
-        return redirect(url_for('index', search=keyword))
-    
-    # Get seller information from the first vehicle
-    seller_info = {
-        'keyword': keyword,
-        'name': vehicles[0].full_name if vehicles[0].full_name else 'Vendedor',
-        'location': vehicles[0].location if vehicles[0].location else '',
-        'whatsapp': vehicles[0].whatsapp_number if vehicles[0].whatsapp_number else '',
-        'total_vehicles': len(vehicles)
-    }
-    
-    # Calculate statistics
-    total_views = 0
-    total_clicks = 0
-    for vehicle in vehicles:
-        vehicle_views = VehicleView.query.filter_by(vehicle_id=vehicle.id).count()
-        vehicle_clicks = Click.query.filter_by(vehicle_id=vehicle.id).count()
-        total_views += vehicle_views
-        total_clicks += vehicle_clicks
-    
-    seller_stats = {
-        'total_views': total_views,
-        'total_clicks': total_clicks,
-        'avg_price': sum(v.price for v in vehicles) // len(vehicles) if vehicles else 0
-    }
-    
-    return render_template('seller_profile.html', 
-                         vehicles=vehicles, 
-                         seller_info=seller_info,
-                         seller_stats=seller_stats)
 
 @app.route('/admin/api/keyword-vehicles/<keyword>')
 def api_keyword_vehicles(keyword):
