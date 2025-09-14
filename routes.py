@@ -1601,7 +1601,11 @@ def admin_seller_keywords():
         keyword_stats = []
         flash('La funcionalidad de palabras clave está en proceso de configuración. La columna de base de datos será agregada pronto.', 'info')
     
-    return render_template('admin_seller_keywords.html', stats=stats, keyword_stats=keyword_stats)
+    # Get pending requests count for sidebar
+    pending_requests_count = ClientRequest.query.filter_by(status='pending').count()
+    sidebar_stats = {'pending_requests_count': pending_requests_count}
+    
+    return render_template('admin_seller_keywords.html', stats=sidebar_stats, keyword_stats=keyword_stats, keyword_page_stats=stats)
 
 @app.route('/admin/api/keyword-vehicles/<keyword>')
 def api_keyword_vehicles(keyword):
