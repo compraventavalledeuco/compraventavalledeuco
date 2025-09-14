@@ -1568,8 +1568,15 @@ def admin_seller_keywords():
             keyword = keyword_tuple[0]
             vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
             
-            total_views = sum(v.views for v in vehicles if v.views)
-            total_clicks = sum(v.clicks for v in vehicles if v.clicks)
+            # Calculate total views and clicks from related tables
+            total_views = 0
+            total_clicks = 0
+            for vehicle in vehicles:
+                vehicle_views = VehicleView.query.filter_by(vehicle_id=vehicle.id).count()
+                vehicle_clicks = Click.query.filter_by(vehicle_id=vehicle.id).count()
+                total_views += vehicle_views
+                total_clicks += vehicle_clicks
+            
             latest_vehicle_date = max((v.created_at for v in vehicles), default=None)
             
             keyword_stats.append({
