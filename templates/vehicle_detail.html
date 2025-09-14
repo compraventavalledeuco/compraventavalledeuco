@@ -282,14 +282,16 @@
                                     <i class="fas fa-share me-2"></i>Compartir Publicación
                                 </button>
                             </div>
+                            {% if vehicle.seller_keyword %}
                             <div class="col-6">
                                 <button type="button" class="btn btn-outline-secondary w-100" 
                                         id="shareSellerBtn"
-                                        data-seller-keyword="{{ vehicle.seller_keyword or '' }}"
+                                        data-seller-keyword="{{ vehicle.seller_keyword }}"
                                         data-seller-name="{{ vehicle.contact_name or 'Vendedor' }}">
                                     <i class="fas fa-user-share me-2"></i>Compartir Vendedor
                                 </button>
                             </div>
+                            {% endif %}
                         </div>
                         {% if vehicle.seller_keyword %}
                         <div class="text-center mt-2">
@@ -412,8 +414,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let shareUrl, shareTitle;
             
             if (sellerKeyword && sellerKeyword.trim() !== '') {
-                // Create URL to seller profile by keyword
-                shareUrl = window.location.origin + '/vendedor/' + encodeURIComponent(sellerKeyword);
+                // Create URL to search by seller keyword
+                shareUrl = window.location.origin + '/?search=' + encodeURIComponent(sellerKeyword);
                 shareTitle = 'Todos los vehículos de ' + sellerName;
             } else {
                 // Fallback: share current vehicle as seller example
