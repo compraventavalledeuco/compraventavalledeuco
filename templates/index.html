@@ -237,9 +237,9 @@
                                             <div class="position-relative">
                                                 {% if vehicle.get_main_image() %}
                                                     <img src="{{ vehicle.get_main_image() }}" 
-                                                         class="most-viewed-image" 
+                                                         class="most-viewed-image img-fallback" 
                                                          alt="{{ vehicle.title }}"
-                                                         onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
+                                                         data-fallback="{{ url_for('static', filename='placeholder-car.png') }}">
                                                 {% else %}
                                                     <img src="{{ url_for('static', filename='placeholder-car.png') }}" 
                                                          class="most-viewed-image" 
@@ -304,9 +304,9 @@
                                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                                             <a href="{{ url_for('vehicle_detail', id=vehicle.id) }}" class="text-decoration-none">
                                                 <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" 
-                                                     class="card-img-top vehicle-image" 
+                                                     class="card-img-top vehicle-image img-fallback" 
                                                      alt="{{ vehicle.title }}"
-                                                     onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
+                                                     data-fallback="{{ url_for('static', filename='placeholder-car.png') }}">
                                             </a>
                                         </div>
                                         {% endfor %}
@@ -403,6 +403,16 @@
                                                 {% endif %}
                                             </div>
                                         </div>
+                                        {% if vehicle.seller_keyword %}
+                                        <div class="row g-1">
+                                            <div class="col-12">
+                                                <a href="{{ url_for('seller_profile', keyword=vehicle.seller_keyword) }}" 
+                                                   class="btn btn-outline-primary btn-sm w-100">
+                                                    <i class="fas fa-user me-1"></i>Ver más de este vendedor
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -497,6 +507,15 @@
                                         </div>
                                     {% endif %}
                                 </div>
+                                {% if vehicle.seller_keyword %}
+                                <div class="mt-2">
+                                    <a href="{{ url_for('seller_profile', keyword=vehicle.seller_keyword) }}" 
+                                       class="btn btn-outline-primary btn-sm w-100"
+                                       onclick="event.stopPropagation()">
+                                        <i class="fas fa-user me-1"></i>Ver más de este vendedor
+                                    </a>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         </a>
@@ -619,4 +638,18 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- No JavaScript needed - Banner is completely independent -->
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('img.img-fallback').forEach(function(img){
+    const fallback = img.getAttribute('data-fallback');
+    img.addEventListener('error', function(){
+      if (fallback && img.src !== fallback) {
+        img.src = fallback;
+      }
+    });
+  });
+});
+</script>
 {% endblock %}
