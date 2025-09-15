@@ -1026,6 +1026,33 @@ def edit_client_request(request_id):
         client_request.color = request.form.get('color', '')
         client_request.admin_notes = request.form.get('admin_notes', '')
         
+        # Handle current images management (selection and deletion)
+        current_images = client_request.get_images_list()
+        updated_current_images = current_images.copy()
+        
+        # Handle deleted images
+        deleted_images_str = request.form.get('deleted_images', '')
+        if deleted_images_str:
+            deleted_indices = [int(idx) for idx in deleted_images_str.split(',') if idx.strip()]
+            # Remove deleted images (in reverse order to maintain indices)
+            for idx in sorted(deleted_indices, reverse=True):
+                if 0 <= idx < len(updated_current_images):
+                    print(f"[ADMIN EDIT REQUEST] Deleting image at index {idx}: {updated_current_images[idx][:50]}...")
+                    updated_current_images.pop(idx)
+        
+        # Handle current main image selection
+        current_main_index = request.form.get('current_main_image_index')
+        if current_main_index is not None and updated_current_images:
+            try:
+                new_main_index = int(current_main_index)
+                if 0 <= new_main_index < len(updated_current_images):
+                    client_request.main_image_index = new_main_index
+                    print(f"[ADMIN EDIT REQUEST] Updated main image index to: {new_main_index}")
+                else:
+                    client_request.main_image_index = 0
+            except (ValueError, TypeError):
+                client_request.main_image_index = 0
+        
         # Handle new uploaded images
         new_image_urls = []
         if 'vehicle_images' in request.files:
@@ -1046,6 +1073,15 @@ def edit_client_request(request_id):
                 
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     client_request.images = json.dumps(new_image_urls)
+                    client_request.main_image_index = 0  # Reset to first image for new uploads
+                    print(f"[ADMIN EDIT REQUEST] Replaced with {len(new_image_urls)} new images")
+        elif updated_current_images != current_images:
+            # If current images were modified (deleted), update the gallery
+            client_request.images = json.dumps(updated_current_images)
+            # Adjust main image index if necessary
+            if client_request.main_image_index >= len(updated_current_images):
+                client_request.main_image_index = max(0, len(updated_current_images) - 1)
+            print(f"[ADMIN EDIT REQUEST] Updated current images. Remaining: {len(updated_current_images)} images. main_image_index={client_request.main_image_index}")
         
         # Also update the associated vehicle if it exists
         vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
@@ -1072,9 +1108,14 @@ def edit_client_request(request_id):
             vehicle.location = client_request.location
             vehicle.address = client_request.address
             
-            # Update images if new ones were uploaded
+            # Update images and main image index
             if new_image_urls:
                 vehicle.images = json.dumps(new_image_urls)
+                vehicle.main_image_index = 0  # Reset to first image for new uploads
+            elif updated_current_images != current_images:
+                # If current images were modified, update vehicle images too
+                vehicle.images = json.dumps(updated_current_images)
+                vehicle.main_image_index = client_request.main_image_index
             print(f"DEBUG: Vehicle updated - Title: {vehicle.title}, Price: {vehicle.price}")
         else:
             print(f"DEBUG: No vehicle found for client_request_id {request_id}")

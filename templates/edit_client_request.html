@@ -250,32 +250,58 @@
                 </div>
 
                 {% if client_request.publication_type == 'plus' %}
-                <!-- Current Images -->
+                <!-- Current Images Management -->
                 {% if client_request.get_images_list() %}
                 <div class="card mb-4">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
-                            <i class="fas fa-images me-2"></i>Imágenes Actuales
+                            <i class="fas fa-images me-2"></i>Gestión de Imágenes Actuales
                         </h5>
+                        <span class="badge bg-info">{{ client_request.get_images_list()|length }} imagen{{ 's' if client_request.get_images_list()|length != 1 else '' }}</span>
                     </div>
                     <div class="card-body">
-                        <div class="row">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Gestión de imágenes:</strong> Haz clic en una imagen para seleccionarla como principal. Usa el botón de eliminar para quitar imágenes específicas.
+                        </div>
+                        
+                        <div class="row" id="currentRequestImagesContainer">
                             {% for image in client_request.get_images_list() %}
-                            <div class="col-md-3 mb-3">
-                                <div class="position-relative">
-                                    <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" class="img-fluid rounded" 
-                                         style="height: 150px; width: 100%; object-fit: cover;" 
+                            <div class="col-md-3 mb-3" data-image-index="{{ loop.index0 }}" id="current-request-image-{{ loop.index0 }}">
+                                <div class="position-relative image-management-card">
+                                    <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" 
+                                         class="img-fluid rounded current-request-image-selectable" 
+                                         style="height: 150px; width: 100%; object-fit: cover; cursor: pointer; border: {{ '3px solid #007bff' if loop.index0 == client_request.main_image_index else '2px solid #dee2e6' }}; box-shadow: {{ '0 0 10px rgba(0, 123, 255, 0.3)' if loop.index0 == client_request.main_image_index else 'none' }};"
+                                         onclick="selectCurrentRequestMainImage({{ loop.index0 }})"
+                                         data-image-url="{{ image }}"
                                          alt="Imagen del vehículo">
+                                    
+                                    <!-- Main image badge -->
+                                    <span class="badge bg-success position-absolute top-0 start-0 m-1 main-image-badge-request {{ 'd-none' if loop.index0 != client_request.main_image_index else '' }}">
+                                        <i class="fas fa-star me-1"></i>Principal
+                                    </span>
+                                    
+                                    <!-- Delete button -->
                                     <button type="button" 
                                             class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1 delete-image-btn"
+                                            onclick="deleteCurrentRequestImage({{ loop.index0 }})"
                                             data-image-url="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}"
                                             title="Eliminar imagen">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    
+                                    <div class="text-center mt-2">
+                                        <small class="text-muted">Imagen {{ loop.index }}</small>
+                                    </div>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
+                        
+                        <!-- Hidden inputs for tracking changes -->
+                        <input type="hidden" id="currentRequestMainImageIndex" name="current_main_image_index" value="{{ client_request.main_image_index or 0 }}">
+                        <input type="hidden" id="deletedRequestImages" name="deleted_images" value="">
+                        <input type="hidden" id="currentRequestImagesData" name="current_images_data" value="{{ client_request.images }}">
                     </div>
                 </div>
                 {% else %}
@@ -530,10 +556,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 badge.classList.remove('d-none');
             }
         }
-        
-        // Update hidden input
-        updateHiddenInputs();
     };
+    
+    // Current request images management functions
+    window.selectCurrentRequestMainImage = function(imageIndex) {
+        // Remove main badge from all current request images
+        document.querySelectorAll('.main-image-badge-request').forEach(badge => {
+            badge.classList.add('d-none');
+        });
+        
+        // Remove selected visual effect from all current request images
+        const allCurrentImages = document.querySelectorAll('.current-request-image-selectable');
+        allCurrentImages.forEach(img => {
+            img.style.border = '2px solid #dee2e6';
+            img.style.boxShadow = 'none';
+        });
+        
+        // Add main badge to selected current request image
+        const selectedCard = document.querySelector(`#current-request-image-${imageIndex}`);
+        if (selectedCard) {
+            const badge = selectedCard.querySelector('.main-image-badge-request');
+            if (badge) {
+                badge.classList.remove('d-none');
+            }
+            
+            // Add visual selected effect
+            const img = selectedCard.querySelector('.current-request-image-selectable');
+            if (img) {
+                img.style.border = '3px solid #007bff';
+                img.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.3)';
+            }
+        }
+        
+        // Update hidden input for current request main image
+        const currentRequestMainImageIndexInput = document.getElementById('currentRequestMainImageIndex');
+        if (currentRequestMainImageIndexInput) {
+            currentRequestMainImageIndexInput.value = imageIndex;
+        }
+    };
+    
+    window.deleteCurrentRequestImage = function(imageIndex) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
+            // Hide the image card
+            const imageCard = document.querySelector(`#current-request-image-${imageIndex}`);
+            if (imageCard) {
+                imageCard.style.display = 'none';
+                imageCard.setAttribute('data-deleted', 'true');
+            }
+            
+            // Update deleted images list
+            const deletedImagesInput = document.getElementById('deletedRequestImages');
+            if (deletedImagesInput) {
+                let deletedList = deletedImagesInput.value ? deletedImagesInput.value.split(',') : [];
+                if (!deletedList.includes(imageIndex.toString())) {
+                    deletedList.push(imageIndex.toString());
+                    deletedImagesInput.value = deletedList.join(',');
+                }
+            }
+            
+            // Check if we deleted the main image, if so select a new one
+            const currentMainIndex = parseInt(document.getElementById('currentRequestMainImageIndex').value);
+            if (currentMainIndex === imageIndex) {
+                // Find the first non-deleted image to set as main
+                const allImageCards = document.querySelectorAll('#currentRequestImagesContainer [data-image-index]');
+                for (let card of allImageCards) {
+                    const cardIndex = parseInt(card.getAttribute('data-image-index'));
+                    if (card.getAttribute('data-deleted') !== 'true') {
+                        window.selectCurrentRequestMainImage(cardIndex);
+                        break;
+                    }
+                }
+            }
+            
+            // Update image count badge
+            updateRequestImageCountBadge();
+        }
+    };
+    
+    function updateRequestImageCountBadge() {
+        const visibleImages = document.querySelectorAll('#currentRequestImagesContainer [data-image-index]:not([data-deleted="true"])').length;
+        const badge = document.querySelector('#currentRequestImagesContainer').closest('.card').querySelector('.badge');
+        if (badge) {
+            badge.textContent = `${visibleImages} imagen${visibleImages !== 1 ? 's' : ''}`;
+        }
+    }
 });
 
 // Bootstrap form validation
