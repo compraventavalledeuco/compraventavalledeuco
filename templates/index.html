@@ -426,10 +426,10 @@
                             <div class="position-relative">
                                 {% if vehicle.get_images_list() %}
                                     <img src="{% if vehicle.get_main_image().startswith('http') %}{{ vehicle.get_main_image() }}{% else %}{{ url_for('static', filename=vehicle.get_main_image()) }}{% endif %}" 
-                                         class="card-img-top vehicle-image" 
+                                         class="card-img-top vehicle-image img-fallback" 
                                          alt="{{ vehicle.title }}"
-                                         style="height: 200px; object-fit: cover;">
-                                         onerror="this.src='{{ url_for('static', filename='placeholder-car.png') }}'">
+                                         style="height: 200px; object-fit: cover;"
+                                         data-fallback="{{ url_for('static', filename='placeholder-car.png') }}">
                                 {% else %}
                                     <img src="{{ url_for('static', filename='placeholder-car.png') }}" 
                                          class="card-img-top vehicle-image" 
@@ -636,8 +636,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // No JavaScript needed - Banner is completely independent
 </script>
-
-<!-- No JavaScript needed - Banner is completely independent -->
 {% endblock %}
 
 {% block scripts %}

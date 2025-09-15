@@ -168,7 +168,11 @@ function initializeTooltips() {
 
 // Handle image loading errors
 function handleImageError(img) {
-    img.src = "/static/placeholder-car.png";
+    // Use fallback from data attribute if available, otherwise use placeholder
+    const fallback = img.getAttribute('data-fallback') || "/static/placeholder-car.png";
+    if (img.src !== fallback) {
+        img.src = fallback;
+    }
 }
 
 // Global error handler for images
@@ -181,6 +185,22 @@ document.addEventListener(
     },
     true,
 );
+
+// Initialize image fallback handling for existing images
+document.addEventListener("DOMContentLoaded", function () {
+    const images = document.querySelectorAll("img.img-fallback");
+    images.forEach(img => {
+        // Check if image is already loaded
+        if (img.complete && img.naturalWidth === 0) {
+            handleImageError(img);
+        }
+        
+        // Add error handler
+        img.addEventListener('error', function() {
+            handleImageError(this);
+        });
+    });
+});
 
 // Add loading states to buttons
 document.addEventListener("click", function (e) {
