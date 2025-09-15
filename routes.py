@@ -274,7 +274,35 @@ def vehicle_detail(id):
     db.session.add(view)
     db.session.commit()
     
-    return render_template('vehicle_detail.html', vehicle=vehicle)
+    # Check if seller has multiple vehicles (for share button)
+    seller_vehicle_count = 0
+    seller_name = "Vendedor"
+    
+    if vehicle.client_request_id:
+        # Get the original client request to find DNI
+        client_request = ClientRequest.query.get(vehicle.client_request_id)
+        if client_request and client_request.dni:
+            # Count vehicles from the same DNI (through client requests)
+            seller_requests = ClientRequest.query.filter_by(
+                dni=client_request.dni,
+                status='approved'
+            ).all()
+            
+            # Count active vehicles from these requests
+            for req in seller_requests:
+                vehicle_from_request = Vehicle.query.filter_by(
+                    client_request_id=req.id,
+                    is_active=True
+                ).first()
+                if vehicle_from_request:
+                    seller_vehicle_count += 1
+            
+            seller_name = client_request.full_name
+    
+    return render_template('vehicle_detail.html', 
+                         vehicle=vehicle, 
+                         seller_vehicle_count=seller_vehicle_count,
+                         seller_name=seller_name)
 
 @app.route('/track_click/<int:vehicle_id>/<click_type>')
 def track_click(vehicle_id, click_type):
@@ -659,6 +687,19 @@ def client_request():
         # Handle form submission
         price_str = request.form['price'].replace('.', '').replace(',', '').replace(' ', '')
         
+        # Validate price range (PostgreSQL integer limit is ~2.1 billion)
+        try:
+            price_value = int(price_str)
+            if price_value < 0:
+                flash('El precio no puede ser negativo', 'danger')
+                return render_template('client_request.html')
+            if price_value > 2000000000:  # 2 billion limit
+                flash('El precio es demasiado alto. Máximo permitido: $2.000.000.000', 'danger')
+                return render_template('client_request.html')
+        except ValueError:
+            flash('El precio debe ser un número válido', 'danger')
+            return render_template('client_request.html')
+        
         # Handle contact numbers - add +549 prefix automatically
         whatsapp_number = request.form.get('whatsapp_number', '').strip()
         call_number = request.form.get('call_number', '').strip()
@@ -676,10 +717,27 @@ def client_request():
         
         # Optional seller keyword
         seller_keyword = request.form.get('seller_keyword', '').strip()
+        dni_clean = request.form['dni'].replace('.', '')  # Remove dots from DNI
+        
+        # Check if this DNI already has a different seller_keyword
+        if seller_keyword:
+            existing_requests = ClientRequest.query.filter_by(dni=dni_clean).all()
+            if existing_requests:
+                # Update all existing requests from this DNI to use the new seller_keyword
+                for existing_req in existing_requests:
+                    if existing_req.seller_keyword != seller_keyword:
+                        existing_req.seller_keyword = seller_keyword
+                        
+                        # Also update any vehicles associated with those requests
+                        vehicles_to_update = Vehicle.query.filter_by(client_request_id=existing_req.id).all()
+                        for vehicle in vehicles_to_update:
+                            vehicle.seller_keyword = seller_keyword
+                
+                db.session.commit()
 
         client_request = ClientRequest(
             full_name=request.form['full_name'],
-            dni=request.form['dni'].replace('.', ''),  # Remove dots from DNI
+            dni=dni_clean,
             whatsapp_number=whatsapp_number if whatsapp_number else None,
             call_number=call_number if call_number else None,
             phone_number=whatsapp_number or call_number,  # Legacy field compatibility
@@ -688,7 +746,7 @@ def client_request():
             seller_keyword=seller_keyword if seller_keyword else None,
             title=request.form['title'],
             description=request.form['description'],
-            price=int(price_str),
+            price=price_value,
             currency=request.form['currency'],
             publication_type=request.form.get('publication_type', 'plus'),
             year=int(request.form['year']) if request.form['year'] else None,
@@ -795,51 +853,6 @@ def admin_pending_requests():
     
     return render_template('admin_pending_requests.html', requests=pending_requests)
 
-# Public seller profile route
-@app.route('/vendedor/<keyword>')
-def seller_profile(keyword):
-    """Página de perfil del vendedor que muestra todos sus vehículos"""
-    # Track page visit
-    track_page_visit(f'seller_profile_{keyword}')
-    
-    # Get all vehicles for this seller keyword
-    vehicles = Vehicle.query.filter_by(seller_keyword=keyword, is_active=True).order_by(
-        Vehicle.is_plus.desc(),  # Plus vehicles first
-        Vehicle.created_at.desc()  # Then by newest first
-    ).all()
-    
-    if not vehicles:
-        # If no vehicles found, redirect to main page with search
-        return redirect(url_for('index', search=keyword))
-    
-    # Get seller information from the first vehicle
-    seller_info = {
-        'keyword': keyword,
-        'name': vehicles[0].full_name if vehicles[0].full_name else 'Vendedor',
-        'location': vehicles[0].location if vehicles[0].location else '',
-        'whatsapp': vehicles[0].whatsapp_number if vehicles[0].whatsapp_number else '',
-        'total_vehicles': len(vehicles)
-    }
-    
-    # Calculate statistics
-    total_views = 0
-    total_clicks = 0
-    for vehicle in vehicles:
-        vehicle_views = VehicleView.query.filter_by(vehicle_id=vehicle.id).count()
-        vehicle_clicks = Click.query.filter_by(vehicle_id=vehicle.id).count()
-        total_views += vehicle_views
-        total_clicks += vehicle_clicks
-    
-    seller_stats = {
-        'total_views': total_views,
-        'total_clicks': total_clicks,
-        'avg_price': sum(v.price for v in vehicles) // len(vehicles) if vehicles else 0
-    }
-    
-    return render_template('seller_profile.html', 
-                         vehicles=vehicles, 
-                         seller_info=seller_info,
-                         seller_stats=seller_stats)
 
 @app.route('/admin/procesar-solicitud/<int:request_id>/<action>')
 def process_client_request(request_id, action):
@@ -941,7 +954,21 @@ def edit_client_request(request_id):
         
         client_request.full_name = request.form['full_name']
         client_request.dni = request.form['dni']
-        client_request.seller_keyword = request.form.get('seller_keyword', '').strip() or None
+        new_seller_keyword = request.form.get('seller_keyword', '').strip() or None
+        
+        # Check if this DNI already has a different seller_keyword in other requests
+        if new_seller_keyword and new_seller_keyword != client_request.seller_keyword:
+            existing_requests = ClientRequest.query.filter_by(dni=client_request.dni).all()
+            for existing_req in existing_requests:
+                if existing_req.seller_keyword != new_seller_keyword:
+                    existing_req.seller_keyword = new_seller_keyword
+                    
+                    # Also update any vehicles associated with those requests
+                    vehicles_to_update = Vehicle.query.filter_by(client_request_id=existing_req.id).all()
+                    for vehicle in vehicles_to_update:
+                        vehicle.seller_keyword = new_seller_keyword
+        
+        client_request.seller_keyword = new_seller_keyword
         client_request.email = request.form.get('email', '')
         client_request.phone_number = request.form.get('phone_number', '')
         client_request.location = request.form.get('location', '')
@@ -960,10 +987,10 @@ def edit_client_request(request_id):
         client_request.admin_notes = request.form.get('admin_notes', '')
         
         # Handle new uploaded images
+        new_image_urls = []
         if 'vehicle_images' in request.files:
             files = request.files.getlist('vehicle_images')
             if any(file.filename for file in files):  # If new images are uploaded
-                new_image_urls = []
                 for file in files:
                     if file and file.filename and allowed_file(file.filename):
                         filename = secure_filename(file.filename)
@@ -980,8 +1007,40 @@ def edit_client_request(request_id):
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     client_request.images = json.dumps(new_image_urls)
         
+        # Also update the associated vehicle if it exists
+        vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
+        if vehicle:
+            print(f"DEBUG: Updating vehicle ID {vehicle.id} for client_request_id {request_id}")
+            vehicle.title = client_request.title
+            vehicle.description = client_request.description
+            vehicle.price = client_request.price
+            vehicle.currency = client_request.currency
+            vehicle.year = client_request.year
+            vehicle.brand = client_request.brand
+            vehicle.model = client_request.model
+            vehicle.kilometers = client_request.kilometers
+            vehicle.fuel_type = client_request.fuel_type
+            vehicle.transmission = client_request.transmission
+            vehicle.color = client_request.color
+            vehicle.full_name = client_request.full_name
+            vehicle.dni = client_request.dni
+            vehicle.seller_keyword = client_request.seller_keyword
+            vehicle.email = client_request.email
+            vehicle.phone_number = client_request.phone_number
+            vehicle.whatsapp_number = client_request.phone_number  # Use phone as WhatsApp
+            vehicle.call_number = client_request.phone_number
+            vehicle.location = client_request.location
+            vehicle.address = client_request.address
+            
+            # Update images if new ones were uploaded
+            if new_image_urls:
+                vehicle.images = json.dumps(new_image_urls)
+            print(f"DEBUG: Vehicle updated - Title: {vehicle.title}, Price: {vehicle.price}")
+        else:
+            print(f"DEBUG: No vehicle found for client_request_id {request_id}")
+        
         db.session.commit()
-        flash('Solicitud actualizada exitosamente', 'success')
+        flash('Solicitud y vehículo actualizados exitosamente', 'success')
         return redirect(url_for('admin_pending_requests'))
     
     return render_template('edit_client_request.html', client_request=client_request)
@@ -1578,13 +1637,24 @@ def admin_seller_keywords():
             'avg_vehicles_per_keyword': avg_vehicles_per_keyword
         }
         
-        # Get keyword statistics
+        # Get keyword statistics with DNI information
         keyword_stats = []
         keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().all()
         
         for keyword_tuple in keywords:
             keyword = keyword_tuple[0]
             vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+            
+            # Get DNI from the first vehicle's client request
+            dni = None
+            seller_name = None
+            for vehicle in vehicles:
+                if vehicle.client_request_id:
+                    client_request = ClientRequest.query.get(vehicle.client_request_id)
+                    if client_request and client_request.dni:
+                        dni = client_request.dni
+                        seller_name = client_request.full_name
+                        break
             
             # Calculate total views and clicks from related tables
             total_views = 0
@@ -1599,6 +1669,8 @@ def admin_seller_keywords():
             
             keyword_stats.append({
                 'keyword': keyword,
+                'dni': dni,
+                'seller_name': seller_name,
                 'vehicle_count': len(vehicles),
                 'total_views': total_views,
                 'total_clicks': total_clicks,
@@ -1625,6 +1697,50 @@ def admin_seller_keywords():
     
     return render_template('admin_seller_keywords.html', stats=sidebar_stats, keyword_stats=keyword_stats, keyword_page_stats=stats)
 
+@app.route('/vendedor/<keyword>')
+def seller_profile(keyword):
+    """Página de perfil del vendedor que muestra todos sus vehículos"""
+    # Track page visit
+    track_page_visit(f'seller_profile_{keyword}')
+    
+    # Get all vehicles for this seller keyword
+    vehicles = Vehicle.query.filter_by(seller_keyword=keyword, is_active=True).order_by(
+        Vehicle.is_plus.desc(),  # Plus vehicles first
+        Vehicle.created_at.desc()  # Then by newest first
+    ).all()
+    
+    if not vehicles:
+        # If no vehicles found, redirect to main page with search
+        return redirect(url_for('index', search=keyword))
+    
+    # Get seller information from the first vehicle
+    seller_info = {
+        'keyword': keyword,
+        'name': vehicles[0].full_name if vehicles[0].full_name else 'Vendedor',
+        'location': vehicles[0].location if vehicles[0].location else '',
+        'whatsapp': vehicles[0].whatsapp_number if vehicles[0].whatsapp_number else '',
+        'total_vehicles': len(vehicles)
+    }
+    
+    # Calculate statistics
+    total_views = 0
+    total_clicks = 0
+    for vehicle in vehicles:
+        vehicle_views = VehicleView.query.filter_by(vehicle_id=vehicle.id).count()
+        vehicle_clicks = Click.query.filter_by(vehicle_id=vehicle.id).count()
+        total_views += vehicle_views
+        total_clicks += vehicle_clicks
+    
+    seller_stats = {
+        'total_views': total_views,
+        'total_clicks': total_clicks,
+        'avg_price': sum(v.price for v in vehicles) // len(vehicles) if vehicles else 0
+    }
+    
+    return render_template('seller_profile.html', 
+                         vehicles=vehicles, 
+                         seller_info=seller_info,
+                         seller_stats=seller_stats)
 
 @app.route('/admin/api/keyword-vehicles/<keyword>')
 def api_keyword_vehicles(keyword):
@@ -1678,6 +1794,29 @@ def api_update_keyword():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Funcionalidad no disponible temporalmente'})
 
+@app.route('/admin/api/delete-keyword', methods=['POST'])
+def admin_delete_keyword():
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        
+        if not keyword:
+            return jsonify({'success': False, 'error': 'Falta el parámetro keyword'})
+        
+        # Update all vehicles with this keyword to remove it
+        vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+        for vehicle in vehicles:
+            vehicle.seller_keyword = None
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Palabra clave eliminada. {len(vehicles)} vehículos afectados.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Error al eliminar la palabra clave'})
+
 @app.route('/admin/restore_backup', methods=['POST'])
 def admin_restore_backup():
     if not session.get('admin_logged_in'):
@@ -1685,13 +1824,17 @@ def admin_restore_backup():
     
     try:
         backup_file = request.form.get('backup_file')
+        uploaded_file = request.files.get('backup_zip_file')
         
-        if not backup_file:
-            flash('Debe seleccionar un archivo de backup', 'error')
+        # Check if we have either a selected backup or an uploaded file
+        if not backup_file and not uploaded_file:
+            flash('Debe seleccionar un archivo de backup o subir un archivo ZIP', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Create a backup before restoring
         from backup_system.backup_system import BackupManager
+        import os
+        import tempfile
         backup_manager = BackupManager()
         
         # Create pre-restore backup
@@ -1700,8 +1843,29 @@ def admin_restore_backup():
         if pre_restore_backup['success']:
             flash(f'Backup de seguridad creado: {pre_restore_backup["filename"]}', 'info')
         
-        # Attempt to restore the selected backup
-        restore_result = backup_manager.restore_backup(backup_file)
+        # Handle uploaded ZIP file
+        if uploaded_file and uploaded_file.filename:
+            if not uploaded_file.filename.endswith('.zip'):
+                flash('El archivo debe ser un ZIP válido', 'error')
+                return redirect(url_for('admin_backup_dashboard'))
+            
+            # Save uploaded file temporarily
+            temp_dir = tempfile.mkdtemp()
+            temp_file_path = os.path.join(temp_dir, uploaded_file.filename)
+            uploaded_file.save(temp_file_path)
+            
+            # Use the uploaded file for restoration
+            restore_result = backup_manager.restore_backup(temp_file_path)
+            
+            # Clean up temporary file
+            try:
+                os.remove(temp_file_path)
+                os.rmdir(temp_dir)
+            except:
+                pass
+        else:
+            # Use existing backup file
+            restore_result = backup_manager.restore_backup(backup_file)
         
         if restore_result['success']:
             flash('Backup restaurado exitosamente', 'success')
@@ -1713,15 +1877,41 @@ def admin_restore_backup():
     
     return redirect(url_for('admin_backup_dashboard'))
 
+@app.route('/admin/delete_backup', methods=['POST'])
+def admin_delete_backup():
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'})
+    
+    try:
+        data = request.get_json()
+        backup_path = data.get('backup_path')
+        
+        if not backup_path or '..' in backup_path:
+            return jsonify({'success': False, 'error': 'Ruta de backup inválida'})
+        
+        # Check if file exists
+        if not os.path.exists(backup_path):
+            return jsonify({'success': False, 'error': 'Archivo de backup no encontrado'})
+        
+        # Delete the backup file
+        os.remove(backup_path)
+        
+        # Also delete manifest file if exists
+        manifest_path = backup_path.replace('.zip', '_manifest.json')
+        if os.path.exists(manifest_path):
+            os.remove(manifest_path)
+        
+        return jsonify({'success': True, 'message': 'Backup eliminado exitosamente'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/admin/download_backup/<path:backup_file>')
 def admin_download_backup(backup_file):
     if not session.get('admin_logged_in'):
         return redirect(url_for('panel_login'))
     
     try:
-        import os
-        from flask import send_file
-        
         # Validate backup file path for security
         if not backup_file or '..' in backup_file:
             flash('Archivo de backup inválido', 'error')
@@ -1735,11 +1925,12 @@ def admin_download_backup(backup_file):
         # Get filename for download
         filename = os.path.basename(backup_file)
         
+        # Send file
         return send_file(
             backup_file,
             as_attachment=True,
             download_name=filename,
-            mimetype='application/octet-stream'
+            mimetype='application/zip'
         )
         
     except Exception as e:

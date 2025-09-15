@@ -182,7 +182,7 @@
                             </div>
                         {% endif %}
                         
-                        {% if vehicle.tire_condition and vehicle.is_plus %}
+                        {% if vehicle.tire_condition %}
                             <div class="row mb-2">
                                 <div class="col-6">
                                     <i class="fas fa-circle text-muted me-2"></i>
@@ -282,26 +282,25 @@
                                     <i class="fas fa-share me-2"></i>Compartir Publicación
                                 </button>
                             </div>
-                            {% if vehicle.seller_keyword %}
+                            {% if seller_vehicle_count > 1 %}
                             <div class="col-6">
                                 <button type="button" class="btn btn-outline-secondary w-100" 
                                         id="shareSellerBtn"
-                                        data-seller-keyword="{{ vehicle.seller_keyword }}"
-                                        data-seller-name="{{ vehicle.contact_name or 'Vendedor' }}">
-                                    <i class="fas fa-user-share me-2"></i>Compartir Vendedor
+                                        data-seller-keyword="{{ vehicle.seller_keyword or '' }}"
+                                        data-seller-name="{{ seller_name }}">
+                                    <i class="fas fa-user-share me-2"></i>Compartir Vehículos de Vendedor
                                 </button>
+                            </div>
+                            {% else %}
+                            <div class="col-6">
+                                <!-- Botón oculto cuando el vendedor tiene solo 1 vehículo -->
                             </div>
                             {% endif %}
                         </div>
                         {% if vehicle.seller_keyword %}
-                        <div class="text-center mt-2">
-                            <a class="small" href="{{ url_for('seller_profile', keyword=vehicle.seller_keyword) }}">
-                                <i class="fas fa-user me-1"></i>Ver perfil del vendedor: {{ vehicle.seller_keyword }}
-                            </a>
-                        </div>
+
                         {% endif %}
                     </div>
-                </div>
             </div>
 
 
@@ -411,31 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const sellerKeyword = this.getAttribute('data-seller-keyword');
             const sellerName = this.getAttribute('data-seller-name');
             
-            let shareUrl, shareTitle;
-            
+            // Redirect to search with seller keyword
             if (sellerKeyword && sellerKeyword.trim() !== '') {
-                // Create URL to search by seller keyword
-                shareUrl = window.location.origin + '/?search=' + encodeURIComponent(sellerKeyword);
-                shareTitle = 'Todos los vehículos de ' + sellerName;
+                const searchUrl = 'https://compraventavalledeuco-e79d93ff27d0.herokuapp.com/?search=' + encodeURIComponent(sellerKeyword);
+                window.open(searchUrl, '_blank');
             } else {
-                // Fallback: share current vehicle as seller example
-                shareUrl = window.location.href;
-                shareTitle = 'Vehículos de ' + sellerName;
-            }
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: shareTitle,
-                    text: 'Mira todos los vehículos de este vendedor: ' + sellerName,
-                    url: shareUrl
-                }).catch(console.error);
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(shareUrl).then(function() {
-                    showShareSuccess(shareSellerBtn, 'btn-outline-secondary');
-                }).catch(function() {
-                    alert('Perfil del vendedor: ' + shareUrl + String.fromCharCode(10) + String.fromCharCode(10) + 'Copia este enlace para ver todos los vehículos de ' + sellerName);
-                });
+                // Fallback: redirect to search with seller name
+                const searchUrl = 'https://compraventavalledeuco-e79d93ff27d0.herokuapp.com/?search=' + encodeURIComponent(sellerName);
+                window.open(searchUrl, '_blank');
             }
         });
     }

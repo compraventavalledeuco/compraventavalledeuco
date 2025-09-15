@@ -2,7 +2,7 @@ import os
 import logging
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import timedelta, datetime
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -57,6 +57,14 @@ def generate_password_hash_sha256(password):
     full_hash = salt + password_hash
     
     return full_hash
+
+# Add template context processor for timezone conversion
+@app.template_global()
+def to_local_time(utc_datetime):
+    """Convert UTC datetime to Argentina time (UTC-3)"""
+    if utc_datetime:
+        return utc_datetime - timedelta(hours=3)
+    return utc_datetime
 
 # Import routes after db is initialized, unless explicitly skipped (e.g., for lightweight scripts/migrations)
 if not os.environ.get("SKIP_ROUTES"):

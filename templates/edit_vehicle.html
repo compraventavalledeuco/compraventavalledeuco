@@ -483,6 +483,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const mainIndex = parseInt(mainCard.getAttribute('data-index'));
                 const actualIndex = images.findIndex(img => img.id === mainIndex);
                 mainImageIndexInput.value = actualIndex >= 0 ? actualIndex : 0;
+            } else {
+                mainImageIndexInput.value = 0; // Default to first image if no main selected
             }
         }
     }
@@ -518,12 +520,26 @@ document.addEventListener('DOMContentLoaded', function() {
             badge.classList.add('d-none');
         });
         
+        // Remove selected visual effect from all images
+        const allImages = document.querySelectorAll('.image-selectable');
+        allImages.forEach(img => {
+            img.style.border = '1px solid #dee2e6';
+            img.style.boxShadow = 'none';
+        });
+        
         // Add main badge to selected image
         const selectedCard = document.querySelector(`[data-index="${imageId}"]`);
         if (selectedCard) {
             const badge = selectedCard.querySelector('.main-image-badge');
             if (badge) {
                 badge.classList.remove('d-none');
+            }
+            
+            // Add visual selected effect
+            const img = selectedCard.querySelector('.image-selectable');
+            if (img) {
+                img.style.border = '3px solid #007bff';
+                img.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.3)';
             }
         }
         
@@ -532,38 +548,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 });
 
-// Select main image function
+// Global select main image function (for backward compatibility)
 function selectMainImage(imageIndex) {
-    // Remove main image badge from all images
-    document.querySelectorAll('.main-image-badge').forEach(badge => {
-        badge.classList.add('d-none');
-    });
-    
-    // Remove selected visual effect from all images
-    const allImages = document.querySelectorAll('.image-selectable');
-    allImages.forEach(img => {
-        img.style.border = '1px solid #dee2e6';
-        img.style.boxShadow = 'none';
-    });
-    
-    // Add main image badge to selected image
-    const selectedCard = document.querySelector(`[data-index="${imageIndex}"]`);
-    if (selectedCard) {
-        const badge = selectedCard.querySelector('.main-image-badge');
-        if (badge) badge.classList.remove('d-none');
-        
-        // Add visual selected effect
-        const img = selectedCard.querySelector('.image-selectable');
-        if (img) {
-            img.style.border = '3px solid #007bff';
-            img.style.boxShadow = '0 0 10px rgba(0, 123, 255, 0.3)';
-        }
-    }
-    
-    // Update hidden input value
-    const mainImageIndexInput = document.getElementById('mainImageIndex');
-    if (mainImageIndexInput) {
-        mainImageIndexInput.value = imageIndex;
+    // This function is called from onclick attributes, delegate to window function
+    if (window.selectMainImage) {
+        window.selectMainImage(imageIndex);
     }
 }
 

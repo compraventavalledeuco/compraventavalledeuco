@@ -75,8 +75,8 @@ class Vehicle(db.Model):
         images = self.get_images_list()
         if images:
             # Use the main_image_index to get the selected main image
-            main_index = self.main_image_index if self.main_image_index < len(
-                images) else 0
+            main_index = self.main_image_index if (self.main_image_index is not None and 
+                                                   self.main_image_index < len(images)) else 0
             main_image = images[main_index]
 
             # Return main image as-is - let templates handle URL formatting
