@@ -302,7 +302,11 @@ class ClientRequest(db.Model):
     def get_main_image(self):
         images = self.get_images_list()
         if images:
-            return images[0]
+            # Use the main_image_index to get the selected main image
+            main_index = self.main_image_index if (self.main_image_index is not None and 
+                                                   self.main_image_index < len(images)) else 0
+            main_image = images[main_index]
+            return main_image
         return "/static/placeholder-car.png"
 
     def format_price(self):
