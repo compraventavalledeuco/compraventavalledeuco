@@ -214,7 +214,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('admin_restore_backup') }}">
+            <form method="POST" action="{{ url_for('admin_restore_backup') }}" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -222,21 +222,52 @@
                         Se creará un backup automático antes de proceder.
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="backup_file" class="form-label">Seleccionar Backup:</label>
-                        <select class="form-select" id="backup_file" name="backup_file" required>
-                            <option value="">Selecciona un archivo...</option>
-                            {% for backup in recent_backups %}
-                            <option value="{{ backup.path }}">
-                                {{ backup.name }} ({{ backup.date.strftime('%d/%m/%Y %H:%M') }})
-                            </option>
-                            {% endfor %}
-                        </select>
+                    <!-- Tabs for backup source selection -->
+                    <ul class="nav nav-tabs mb-3" id="backupSourceTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existing-backup" type="button" role="tab">
+                                <i class="fas fa-list me-2"></i>Backups Existentes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-backup" type="button" role="tab">
+                                <i class="fas fa-upload me-2"></i>Subir Archivo ZIP
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="backupSourceContent">
+                        <!-- Existing backups tab -->
+                        <div class="tab-pane fade show active" id="existing-backup" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="backup_file" class="form-label">Seleccionar Backup:</label>
+                                <select class="form-select" id="backup_file" name="backup_file">
+                                    <option value="">Selecciona un archivo...</option>
+                                    {% for backup in recent_backups %}
+                                    <option value="{{ backup.path }}">
+                                        {{ backup.name }} ({{ backup.date.strftime('%d/%m/%Y %H:%M') }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Upload backup tab -->
+                        <div class="tab-pane fade" id="upload-backup" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="backup_zip_file" class="form-label">Subir Archivo ZIP de Backup:</label>
+                                <input type="file" class="form-control" id="backup_zip_file" name="backup_zip_file" accept=".zip" />
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Sube un archivo ZIP de backup previamente descargado
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" class="btn btn-warning" id="restoreSubmitBtn">
                         <i class="fas fa-undo me-2"></i>
                         Restaurar
                     </button>
@@ -247,6 +278,54 @@
 </div>
 
 <script>
+// Validation for restore form
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('#restoreModal form');
+    const submitBtn = document.getElementById('restoreSubmitBtn');
+    const backupFileSelect = document.getElementById('backup_file');
+    const backupZipInput = document.getElementById('backup_zip_file');
+    const existingTab = document.getElementById('existing-tab');
+    const uploadTab = document.getElementById('upload-tab');
+
+    function validateForm() {
+        const activeTab = document.querySelector('#backupSourceTabs .nav-link.active').id;
+        let isValid = false;
+
+        if (activeTab === 'existing-tab') {
+            isValid = backupFileSelect.value !== '';
+        } else if (activeTab === 'upload-tab') {
+            isValid = backupZipInput.files.length > 0;
+        }
+
+        submitBtn.disabled = !isValid;
+        return isValid;
+    }
+
+    // Validate on tab change
+    existingTab.addEventListener('click', function() {
+        setTimeout(validateForm, 100);
+    });
+
+    uploadTab.addEventListener('click', function() {
+        setTimeout(validateForm, 100);
+    });
+
+    // Validate on input change
+    backupFileSelect.addEventListener('change', validateForm);
+    backupZipInput.addEventListener('change', validateForm);
+
+    // Validate on form submit
+    form.addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            alert('Por favor selecciona un backup existente o sube un archivo ZIP');
+        }
+    });
+
+    // Initial validation
+    validateForm();
+});
+</script>
 function selectBackupForRestore(path, name) {
     document.getElementById('backup_file').value = path;
     new bootstrap.Modal(document.getElementById('restoreModal')).show();

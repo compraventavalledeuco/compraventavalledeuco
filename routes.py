@@ -1824,13 +1824,17 @@ def admin_restore_backup():
     
     try:
         backup_file = request.form.get('backup_file')
+        uploaded_file = request.files.get('backup_zip_file')
         
-        if not backup_file:
-            flash('Debe seleccionar un archivo de backup', 'error')
+        # Check if we have either a selected backup or an uploaded file
+        if not backup_file and not uploaded_file:
+            flash('Debe seleccionar un archivo de backup o subir un archivo ZIP', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Create a backup before restoring
         from backup_system.backup_system import BackupManager
+        import os
+        import tempfile
         backup_manager = BackupManager()
         
         # Create pre-restore backup
@@ -1839,8 +1843,29 @@ def admin_restore_backup():
         if pre_restore_backup['success']:
             flash(f'Backup de seguridad creado: {pre_restore_backup["filename"]}', 'info')
         
-        # Attempt to restore the selected backup
-        restore_result = backup_manager.restore_backup(backup_file)
+        # Handle uploaded ZIP file
+        if uploaded_file and uploaded_file.filename:
+            if not uploaded_file.filename.endswith('.zip'):
+                flash('El archivo debe ser un ZIP válido', 'error')
+                return redirect(url_for('admin_backup_dashboard'))
+            
+            # Save uploaded file temporarily
+            temp_dir = tempfile.mkdtemp()
+            temp_file_path = os.path.join(temp_dir, uploaded_file.filename)
+            uploaded_file.save(temp_file_path)
+            
+            # Use the uploaded file for restoration
+            restore_result = backup_manager.restore_backup(temp_file_path)
+            
+            # Clean up temporary file
+            try:
+                os.remove(temp_file_path)
+                os.rmdir(temp_dir)
+            except:
+                pass
+        else:
+            # Use existing backup file
+            restore_result = backup_manager.restore_backup(backup_file)
         
         if restore_result['success']:
             flash('Backup restaurado exitosamente', 'success')
