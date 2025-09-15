@@ -915,10 +915,10 @@ def edit_client_request(request_id):
         client_request.admin_notes = request.form.get('admin_notes', '')
         
         # Handle new uploaded images
+        new_image_urls = []
         if 'vehicle_images' in request.files:
             files = request.files.getlist('vehicle_images')
             if any(file.filename for file in files):  # If new images are uploaded
-                new_image_urls = []
                 for file in files:
                     if file and file.filename and allowed_file(file.filename):
                         filename = secure_filename(file.filename)
@@ -935,8 +935,36 @@ def edit_client_request(request_id):
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     client_request.images = json.dumps(new_image_urls)
         
+        # Also update the associated vehicle if it exists
+        vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
+        if vehicle:
+            vehicle.title = client_request.title
+            vehicle.description = client_request.description
+            vehicle.price = client_request.price
+            vehicle.currency = client_request.currency
+            vehicle.year = client_request.year
+            vehicle.brand = client_request.brand
+            vehicle.model = client_request.model
+            vehicle.kilometers = client_request.kilometers
+            vehicle.fuel_type = client_request.fuel_type
+            vehicle.transmission = client_request.transmission
+            vehicle.color = client_request.color
+            vehicle.full_name = client_request.full_name
+            vehicle.dni = client_request.dni
+            vehicle.seller_keyword = client_request.seller_keyword
+            vehicle.email = client_request.email
+            vehicle.phone_number = client_request.phone_number
+            vehicle.whatsapp_number = client_request.phone_number  # Use phone as WhatsApp
+            vehicle.call_number = client_request.phone_number
+            vehicle.location = client_request.location
+            vehicle.address = client_request.address
+            
+            # Update images if new ones were uploaded
+            if new_image_urls:
+                vehicle.images = json.dumps(new_image_urls)
+        
         db.session.commit()
-        flash('Solicitud actualizada exitosamente', 'success')
+        flash('Solicitud y vehículo actualizados exitosamente', 'success')
         return redirect(url_for('admin_pending_requests'))
     
     return render_template('edit_client_request.html', client_request=client_request)
