@@ -272,6 +272,20 @@
                                            placeholder="Blanco">
                                 </div>
                                 
+                                <div class="col-md-6 mb-3">
+                                    <label for="tire_condition" class="form-label">
+                                        <i class="fas fa-circle me-2"></i>Estado de Cubiertas
+                                    </label>
+                                    <select class="form-select" id="tire_condition" name="tire_condition">
+                                        <option value="">Seleccionar...</option>
+                                        <option value="excelente">Excelente</option>
+                                        <option value="muy_bueno">Muy Bueno</option>
+                                        <option value="bueno">Bueno</option>
+                                        <option value="regular">Regular</option>
+                                        <option value="malo">Malo</option>
+                                    </select>
+                                </div>
+                                
                                 <div class="col-12 mb-3">
                                     <label for="description" class="form-label">
                                         <i class="fas fa-align-left me-2"></i>Descripción *
@@ -538,6 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fuel_type').value = '';
         document.getElementById('transmission').value = '';
         document.getElementById('color').value = '';
+        document.getElementById('tire_condition').value = '';
         document.getElementById('description').value = '';
         document.getElementById('vehicle_images').value = '';
         // Clear images array and previews
