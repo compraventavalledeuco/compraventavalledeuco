@@ -659,6 +659,19 @@ def client_request():
         # Handle form submission
         price_str = request.form['price'].replace('.', '').replace(',', '').replace(' ', '')
         
+        # Validate price range (PostgreSQL integer limit is ~2.1 billion)
+        try:
+            price_value = int(price_str)
+            if price_value < 0:
+                flash('El precio no puede ser negativo', 'danger')
+                return render_template('client_request.html')
+            if price_value > 2000000000:  # 2 billion limit
+                flash('El precio es demasiado alto. Máximo permitido: $2.000.000.000', 'danger')
+                return render_template('client_request.html')
+        except ValueError:
+            flash('El precio debe ser un número válido', 'danger')
+            return render_template('client_request.html')
+        
         # Handle contact numbers - add +549 prefix automatically
         whatsapp_number = request.form.get('whatsapp_number', '').strip()
         call_number = request.form.get('call_number', '').strip()
@@ -688,7 +701,7 @@ def client_request():
             seller_keyword=seller_keyword if seller_keyword else None,
             title=request.form['title'],
             description=request.form['description'],
-            price=int(price_str),
+            price=price_value,
             currency=request.form['currency'],
             publication_type=request.form.get('publication_type', 'plus'),
             year=int(request.form['year']) if request.form['year'] else None,
