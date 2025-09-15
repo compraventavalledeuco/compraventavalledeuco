@@ -867,10 +867,15 @@ def client_request():
         # Get main image index from form
         try:
             main_image_index = int(request.form.get('main_image_index', 0))
+            print(f"[CLIENT REQUEST] Received main_image_index from form: {main_image_index}")
             # Ensure index is valid
             if main_image_index < 0 or main_image_index >= len(image_urls):
+                print(f"[CLIENT REQUEST] Invalid main_image_index {main_image_index}, resetting to 0. Image count: {len(image_urls)}")
                 main_image_index = 0
+            else:
+                print(f"[CLIENT REQUEST] Valid main_image_index: {main_image_index}")
         except (ValueError, TypeError):
+            print(f"[CLIENT REQUEST] Error parsing main_image_index, defaulting to 0")
             main_image_index = 0
         
         client_request.images = json.dumps(image_urls)
