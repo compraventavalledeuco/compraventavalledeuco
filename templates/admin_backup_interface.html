@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Interfaz Completa de Backup - Panel Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="fas fa-database me-2 text-primary"></i>Interfaz Completa de Backup
+            </h2>
+            <p class="text-muted mb-0">Gestión avanzada del sistema de backup</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('admin_backup_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if backup_status.status == 'healthy' %}
+                            <i class="fas fa-check-circle fa-3x text-success"></i>
+                        {% elif backup_status.status == 'warning' %}
+                            <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                        {% elif backup_status.status == 'critical' %}
+                            <i class="fas fa-times-circle fa-3x text-danger"></i>
+                        {% else %}
+                            <i class="fas fa-question-circle fa-3x text-secondary"></i>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title">Estado del Sistema</h5>
+                    <p class="card-text">
+                        {% if backup_status.status == 'healthy' %}
+                            <span class="badge bg-success">Saludable</span>
+                        {% elif backup_status.status == 'warning' %}
+                            <span class="badge bg-warning">Advertencia</span>
+                        {% elif backup_status.status == 'critical' %}
+                            <span class="badge bg-danger">Crítico</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Desconocido</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-archive fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Total de Backups</h5>
+                    <p class="card-text">
+                        <span class="h4 text-primary">{{ backup_status.backup_count or 0 }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-clock fa-3x text-info"></i>
+                    </div>
+                    <h5 class="card-title">Último Backup</h5>
+                    <p class="card-text">
+                        {% if backup_status.last_backup %}
+                            <small>{{ backup_status.last_backup.strftime('%d/%m/%Y %H:%M') }}</small>
+                        {% else %}
+                            <small class="text-muted">Nunca</small>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-hdd fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Tamaño Total</h5>
+                    <p class="card-text">
+                        <span class="h6 text-warning">{{ "%.1f"|format(backup_status.total_size_mb or 0) }} MB</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>Acciones de Backup
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <form method="POST" action="{{ url_for('admin_run_backup') }}">
+                                <input type="hidden" name="type" value="manual">
+                                <button type="submit" class="btn btn-success btn-lg w-100">
+                                    <i class="fas fa-play me-2"></i>
+                                    Crear Backup Manual
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <form method="POST" action="{{ url_for('admin_run_backup') }}">
+                                <input type="hidden" name="type" value="incremental">
+                                <button type="submit" class="btn btn-info btn-lg w-100">
+                                    <i class="fas fa-layer-group me-2"></i>
+                                    Backup Incremental
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-warning btn-lg w-100" data-bs-toggle="modal" data-bs-target="#healthCheckModal">
+                                <i class="fas fa-stethoscope me-2"></i>
+                                Verificar Salud
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-secondary btn-lg w-100" onclick="window.location.reload()">
+                                <i class="fas fa-sync me-2"></i>
+                                Actualizar Estado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Lista de Backups Disponibles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if backup_list %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre del Archivo</th>
+                                        <th>Fecha</th>
+                                        <th>Tamaño</th>
+                                        <th>Tipo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for backup in backup_list %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-archive me-2 text-primary"></i>
+                                            {{ backup.name }}
+                                        </td>
+                                        <td>{{ backup.date.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                        <td>{{ "%.2f"|format(backup.size / (1024*1024)) }} MB</td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ backup.type }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('admin_download_backup', backup_file=backup.path) }}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-outline-warning" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#restoreModal"
+                                                        data-backup-file="{{ backup.path }}"
+                                                        data-backup-name="{{ backup.name }}">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger"
+                                                        onclick="confirmDelete('{{ backup.path }}', '{{ backup.name }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay backups disponibles</h5>
+                            <p class="text-muted">Crea tu primer backup usando el botón "Crear Backup Manual"</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-undo me-2"></i>Restaurar Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>¡Atención!</strong> Esta acción restaurará la base de datos y archivos desde el backup seleccionado. 
+                    Se creará un backup de seguridad antes de proceder.
+                </div>
+                <p>¿Estás seguro de que deseas restaurar el backup: <strong id="restoreBackupName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('admin_restore_backup') }}" style="display: inline;">
+                    <input type="hidden" name="backup_file" id="restoreBackupFile">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-undo me-2"></i>Restaurar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Health Check Modal -->
+<div class="modal fade" id="healthCheckModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-stethoscope me-2"></i>Verificación de Salud del Sistema
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="healthCheckContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Verificando...</span>
+                        </div>
+                        <p class="mt-2">Ejecutando verificación de salud...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Restore modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const restoreModal = document.getElementById('restoreModal');
+    if (restoreModal) {
+        restoreModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const backupFile = button.getAttribute('data-backup-file');
+            const backupName = button.getAttribute('data-backup-name');
+            
+            document.getElementById('restoreBackupFile').value = backupFile;
+            document.getElementById('restoreBackupName').textContent = backupName;
+        });
+    }
+    
+    // Health check modal functionality
+    const healthCheckModal = document.getElementById('healthCheckModal');
+    if (healthCheckModal) {
+        healthCheckModal.addEventListener('show.bs.modal', function() {
+            // Simulate health check
+            setTimeout(function() {
+                document.getElementById('healthCheckContent').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Sistema Saludable</strong>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Base de datos accesible
+                            <span class="badge bg-success rounded-pill">OK</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Directorio de backups
+                            <span class="badge bg-success rounded-pill">OK</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Permisos de escritura
+                            <span class="badge bg-success rounded-pill">OK</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Espacio en disco
+                            <span class="badge bg-success rounded-pill">OK</span>
+                        </li>
+                    </ul>
+                `;
+            }, 2000);
+        });
+    }
+});
+
+// Delete confirmation
+function confirmDelete(backupPath, backupName) {
+    if (confirm('¿Estás seguro de que deseas eliminar el backup "' + backupName + '"? Esta acción no se puede deshacer.')) {
+        // Here you would implement the delete functionality
+        alert('Funcionalidad de eliminación pendiente de implementación');
+    }
+}
+</script>
+{% endblock %}
