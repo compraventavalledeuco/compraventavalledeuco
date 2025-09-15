@@ -410,31 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const sellerKeyword = this.getAttribute('data-seller-keyword');
             const sellerName = this.getAttribute('data-seller-name');
             
-            let shareUrl, shareTitle;
-            
+            // Redirect to search with seller keyword
             if (sellerKeyword && sellerKeyword.trim() !== '') {
-                // Create URL to seller profile by keyword
-                shareUrl = window.location.origin + '/vendedor/' + encodeURIComponent(sellerKeyword);
-                shareTitle = 'Todos los vehículos de ' + sellerName;
+                const searchUrl = 'https://compraventavalledeuco-e79d93ff27d0.herokuapp.com/?search=' + encodeURIComponent(sellerKeyword);
+                window.open(searchUrl, '_blank');
             } else {
-                // Fallback: share current vehicle as seller example
-                shareUrl = window.location.href;
-                shareTitle = 'Vehículos de ' + sellerName;
-            }
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: shareTitle,
-                    text: 'Mira todos los vehículos de este vendedor: ' + sellerName,
-                    url: shareUrl
-                }).catch(console.error);
-            } else {
-                // Fallback: copy to clipboard
-                navigator.clipboard.writeText(shareUrl).then(function() {
-                    showShareSuccess(shareSellerBtn, 'btn-outline-secondary');
-                }).catch(function() {
-                    alert('Perfil del vendedor: ' + shareUrl + String.fromCharCode(10) + String.fromCharCode(10) + 'Copia este enlace para ver todos los vehículos de ' + sellerName);
-                });
+                // Fallback: redirect to search with seller name
+                const searchUrl = 'https://compraventavalledeuco-e79d93ff27d0.herokuapp.com/?search=' + encodeURIComponent(sellerName);
+                window.open(searchUrl, '_blank');
             }
         });
     }
