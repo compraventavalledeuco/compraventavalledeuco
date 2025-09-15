@@ -326,6 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
     validateForm();
 });
 </script>
+
+<script>
 function selectBackupForRestore(path, name) {
     document.getElementById('backup_file').value = path;
     new bootstrap.Modal(document.getElementById('restoreModal')).show();
