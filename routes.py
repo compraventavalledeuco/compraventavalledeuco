@@ -2000,16 +2000,28 @@ def admin_download_backup(backup_file):
     try:
         # Validate backup file path for security
         if not backup_file or '..' in backup_file:
+            app.logger.error(f'Invalid backup file path: {backup_file}')
             flash('Archivo de backup inválido', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Check if file exists
         if not os.path.exists(backup_file):
+            app.logger.error(f'Backup file not found: {backup_file}')
             flash('Archivo de backup no encontrado', 'error')
+            return redirect(url_for('admin_backup_dashboard'))
+        
+        # Check file size
+        file_size = os.path.getsize(backup_file)
+        app.logger.info(f'Backup file size: {file_size} bytes for file: {backup_file}')
+        
+        if file_size == 0:
+            app.logger.error(f'Backup file is empty (0 bytes): {backup_file}')
+            flash('El archivo de backup está vacío (0 MB)', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Get filename for download
         filename = os.path.basename(backup_file)
+        app.logger.info(f'Downloading backup: {filename} ({file_size} bytes)')
         
         # Send file
         return send_file(
@@ -2020,6 +2032,7 @@ def admin_download_backup(backup_file):
         )
         
     except Exception as e:
+        app.logger.error(f'Error downloading backup: {str(e)}')
         flash(f'Error al descargar backup: {str(e)}', 'error')
         return redirect(url_for('admin_backup_dashboard'))
 
