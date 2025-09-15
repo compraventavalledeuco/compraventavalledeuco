@@ -938,6 +938,7 @@ def edit_client_request(request_id):
         # Also update the associated vehicle if it exists
         vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
         if vehicle:
+            print(f"DEBUG: Updating vehicle ID {vehicle.id} for client_request_id {request_id}")
             vehicle.title = client_request.title
             vehicle.description = client_request.description
             vehicle.price = client_request.price
@@ -962,6 +963,9 @@ def edit_client_request(request_id):
             # Update images if new ones were uploaded
             if new_image_urls:
                 vehicle.images = json.dumps(new_image_urls)
+            print(f"DEBUG: Vehicle updated - Title: {vehicle.title}, Price: {vehicle.price}")
+        else:
+            print(f"DEBUG: No vehicle found for client_request_id {request_id}")
         
         db.session.commit()
         flash('Solicitud y vehículo actualizados exitosamente', 'success')
