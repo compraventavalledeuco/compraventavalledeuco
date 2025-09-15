@@ -43,7 +43,7 @@ class BackupManager:
     def load_config(self):
         """Carga la configuración desde archivo JSON"""
         default_config = {
-            "project_path": os.path.dirname(os.path.abspath(__file__)),
+            "project_path": os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "backup_base_dir": "backups",
             "database_file": "vehicle_marketplace.db",
             "uploads_dir": "static/uploads",
@@ -66,15 +66,18 @@ class BackupManager:
             }
         }
         
-        if os.path.exists(self.config_file):
+        config_path = Path(__file__).parent / self.config_file
+        if config_path.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(config_path, 'r', encoding='utf-8') as f:
                     loaded_config = json.load(f)
-                    default_config.update(loaded_config)
+                    self.config = {**default_config, **loaded_config}
             except Exception as e:
                 logging.warning(f"Error cargando configuración: {e}. Usando configuración por defecto.")
+                self.config = default_config
+        else:
+            self.config = default_config
         
-        self.config = default_config
         self.save_config()
         
     def save_config(self):
@@ -350,12 +353,77 @@ class BackupManager:
             
             logging.info(f"Iniciando restauración desde: {backup_file}")
             
-            # Aquí implementarías la lógica de restauración
-            # Por ahora retornamos éxito simulado
-            return {
-                'success': True,
-                'message': f'Backup restaurado exitosamente desde {backup_path.name}'
-            }
+            # Verificar que es un archivo ZIP válido
+            if not zipfile.is_zipfile(backup_path):
+                return {
+                    'success': False,
+                    'error': 'El archivo no es un ZIP válido'
+                }
+            
+            # Crear directorio temporal para extracción
+            import tempfile
+            temp_dir = Path(tempfile.mkdtemp())
+            
+            try:
+                # Extraer el backup
+                with zipfile.ZipFile(backup_path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Buscar el archivo de base de datos en el backup
+                db_backup_path = None
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.endswith('.db') or file == self.config['database_file']:
+                            db_backup_path = Path(root) / file
+                            break
+                    if db_backup_path:
+                        break
+                
+                if not db_backup_path or not db_backup_path.exists():
+                    return {
+                        'success': False,
+                        'error': 'No se encontró archivo de base de datos en el backup'
+                    }
+                
+                # Ruta de la base de datos actual
+                current_db_path = Path(self.config['project_path']) / self.config['database_file']
+                
+                # Hacer backup de la base de datos actual antes de restaurar
+                if current_db_path.exists():
+                    backup_current = current_db_path.parent / f"{current_db_path.stem}_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                    shutil.copy2(current_db_path, backup_current)
+                    logging.info(f"Backup de seguridad creado: {backup_current}")
+                
+                # Restaurar la base de datos
+                shutil.copy2(db_backup_path, current_db_path)
+                logging.info(f"Base de datos restaurada desde: {db_backup_path}")
+                
+                # Restaurar archivos de uploads si existen en el backup
+                uploads_backup_path = temp_dir / 'static' / 'uploads'
+                if uploads_backup_path.exists():
+                    uploads_current_path = Path(self.config['project_path']) / self.config['uploads_dir']
+                    
+                    # Hacer backup de uploads actuales
+                    if uploads_current_path.exists():
+                        uploads_backup = uploads_current_path.parent / f"uploads_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                        shutil.copytree(uploads_current_path, uploads_backup)
+                        logging.info(f"Backup de uploads creado: {uploads_backup}")
+                        
+                        # Limpiar directorio actual
+                        shutil.rmtree(uploads_current_path)
+                    
+                    # Restaurar uploads
+                    shutil.copytree(uploads_backup_path, uploads_current_path)
+                    logging.info(f"Archivos de uploads restaurados")
+                
+                return {
+                    'success': True,
+                    'message': f'Backup restaurado exitosamente desde {backup_path.name}'
+                }
+                
+            finally:
+                # Limpiar directorio temporal
+                shutil.rmtree(temp_dir, ignore_errors=True)
             
         except Exception as e:
             logging.error(f"Error durante la restauración: {e}")

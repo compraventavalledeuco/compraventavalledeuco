@@ -243,12 +243,22 @@
                                 <label for="backup_file" class="form-label">Seleccionar Backup:</label>
                                 <select class="form-select" id="backup_file" name="backup_file">
                                     <option value="">Selecciona un archivo...</option>
-                                    {% for backup in recent_backups %}
-                                    <option value="{{ backup.path }}">
-                                        {{ backup.name }} ({{ backup.date.strftime('%d/%m/%Y %H:%M') }})
-                                    </option>
-                                    {% endfor %}
+                                    {% if recent_backups %}
+                                        {% for backup in recent_backups %}
+                                        <option value="{{ backup.path }}">
+                                            {{ backup.name }} ({{ backup.date.strftime('%d/%m/%Y %H:%M') }})
+                                        </option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="" disabled>No hay backups disponibles</option>
+                                    {% endif %}
                                 </select>
+                                {% if not recent_backups %}
+                                <div class="form-text text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    No se encontraron archivos de backup. Ejecuta un backup manual primero.
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
 
