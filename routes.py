@@ -580,13 +580,41 @@ def edit_vehicle(id):
                         flash(f"Error subiendo imagen: {upload_result['error']}", 'error')
                         print(f"[ADMIN EDIT] File image upload ERROR -> {upload_result['error']}")
         
-        # 3) Persist results: update gallery and main index if we uploaded new images
+        # 3) Handle current images management (selection and deletion)
+        current_images = vehicle.get_images_list()
+        updated_current_images = current_images.copy()
+        
+        # Handle deleted images
+        deleted_images_str = request.form.get('deleted_images', '')
+        if deleted_images_str:
+            deleted_indices = [int(idx) for idx in deleted_images_str.split(',') if idx.strip()]
+            # Remove deleted images (in reverse order to maintain indices)
+            for idx in sorted(deleted_indices, reverse=True):
+                if 0 <= idx < len(updated_current_images):
+                    print(f"[ADMIN EDIT] Deleting image at index {idx}: {updated_current_images[idx][:50]}...")
+                    updated_current_images.pop(idx)
+        
+        # Handle current main image selection
+        current_main_index = request.form.get('current_main_image_index')
+        if current_main_index is not None and updated_current_images:
+            try:
+                new_main_index = int(current_main_index)
+                if 0 <= new_main_index < len(updated_current_images):
+                    vehicle.main_image_index = new_main_index
+                    print(f"[ADMIN EDIT] Updated main image index to: {new_main_index}")
+                else:
+                    vehicle.main_image_index = 0
+            except (ValueError, TypeError):
+                vehicle.main_image_index = 0
+        
+        # 4) Persist results: update gallery and main index if we uploaded new images
         if new_image_urls:
+            # If new images uploaded, replace all images
             vehicle.images = json.dumps(new_image_urls)
             # Backward-compat: also map first 10 to image_1..image_10
             for idx, url in enumerate(new_image_urls[:10], start=1):
                 setattr(vehicle, f'image_{idx}', url)
-            # Set main image index
+            # Set main image index for new images
             try:
                 main_image_index = int(request.form.get('main_image_index', 0))
                 if main_image_index < 0 or main_image_index >= len(new_image_urls):
@@ -594,9 +622,21 @@ def edit_vehicle(id):
                 vehicle.main_image_index = main_image_index
             except (ValueError, TypeError):
                 vehicle.main_image_index = 0
-            print(f"[ADMIN EDIT] Saved {len(new_image_urls)} images to gallery. main_image_index={vehicle.main_image_index}")
+            print(f"[ADMIN EDIT] Saved {len(new_image_urls)} NEW images to gallery. main_image_index={vehicle.main_image_index}")
+        elif updated_current_images != current_images:
+            # If current images were modified (deleted), update the gallery
+            vehicle.images = json.dumps(updated_current_images)
+            # Backward-compat: also map first 10 to image_1..image_10
+            for idx in range(1, 11):
+                setattr(vehicle, f'image_{idx}', None)
+            for idx, url in enumerate(updated_current_images[:10], start=1):
+                setattr(vehicle, f'image_{idx}', url)
+            # Adjust main image index if necessary
+            if vehicle.main_image_index >= len(updated_current_images):
+                vehicle.main_image_index = max(0, len(updated_current_images) - 1)
+            print(f"[ADMIN EDIT] Updated current images gallery. Remaining: {len(updated_current_images)} images. main_image_index={vehicle.main_image_index}")
         else:
-            print("[ADMIN EDIT] No new images uploaded in this request")
+            print("[ADMIN EDIT] No image changes in this request")
         
         db.session.commit()
         flash('Vehículo actualizado exitosamente', 'success')
