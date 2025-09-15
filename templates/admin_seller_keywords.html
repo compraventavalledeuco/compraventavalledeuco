@@ -105,6 +105,8 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th><i class="fas fa-key me-2"></i>Palabra Clave</th>
+                                        <th><i class="fas fa-id-card me-2"></i>DNI</th>
+                                        <th><i class="fas fa-user me-2"></i>Vendedor</th>
                                         <th><i class="fas fa-car me-2"></i>Vehículos</th>
                                         <th><i class="fas fa-eye me-2"></i>Visualizaciones</th>
                                         <th><i class="fas fa-mouse-pointer me-2"></i>Clics</th>
@@ -126,6 +128,20 @@
                                                     <i class="fas fa-search me-1"></i>Buscar
                                                 </a>
                                             </small>
+                                        </td>
+                                        <td>
+                                            {% if keyword_data.dni %}
+                                                <span class="badge bg-secondary">{{ keyword_data.dni }}</span>
+                                            {% else %}
+                                                <small class="text-muted">No disponible</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if keyword_data.seller_name %}
+                                                <strong>{{ keyword_data.seller_name }}</strong>
+                                            {% else %}
+                                                <small class="text-muted">No disponible</small>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <span class="badge bg-primary">{{ keyword_data.vehicle_count }}</span>
@@ -152,6 +168,11 @@
                                                         onclick="editKeyword('{{ keyword_data.keyword }}')"
                                                         title="Editar palabra clave">
                                                     <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="deleteKeyword('{{ keyword_data.keyword }}')"
+                                                        title="Eliminar palabra clave">
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -299,6 +320,32 @@ function editKeyword(currentKeyword) {
                 alert('Error al actualizar la palabra clave');
             });
         }
+    }
+}
+
+function deleteKeyword(keyword) {
+    if (confirm(`¿Estás seguro de eliminar la palabra clave "${keyword}"?\n\nEsto eliminará la palabra clave de todos los vehículos asociados.`)) {
+        fetch('/admin/api/delete-keyword', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                keyword: keyword
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al eliminar la palabra clave');
+        });
     }
 }
 </script>

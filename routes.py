@@ -1606,13 +1606,24 @@ def admin_seller_keywords():
             'avg_vehicles_per_keyword': avg_vehicles_per_keyword
         }
         
-        # Get keyword statistics
+        # Get keyword statistics with DNI information
         keyword_stats = []
         keywords = db.session.query(Vehicle.seller_keyword).filter(Vehicle.seller_keyword != '').filter(Vehicle.seller_keyword.isnot(None)).distinct().all()
         
         for keyword_tuple in keywords:
             keyword = keyword_tuple[0]
             vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+            
+            # Get DNI from the first vehicle's client request
+            dni = None
+            seller_name = None
+            for vehicle in vehicles:
+                if vehicle.client_request_id:
+                    client_request = ClientRequest.query.get(vehicle.client_request_id)
+                    if client_request and client_request.dni:
+                        dni = client_request.dni
+                        seller_name = client_request.full_name
+                        break
             
             # Calculate total views and clicks from related tables
             total_views = 0
@@ -1627,6 +1638,8 @@ def admin_seller_keywords():
             
             keyword_stats.append({
                 'keyword': keyword,
+                'dni': dni,
+                'seller_name': seller_name,
                 'vehicle_count': len(vehicles),
                 'total_views': total_views,
                 'total_clicks': total_clicks,
@@ -1749,6 +1762,29 @@ def api_update_keyword():
         return jsonify({'success': True, 'message': f'Palabra clave actualizada. {len(vehicles)} vehículos afectados.'})
     except Exception as e:
         return jsonify({'success': False, 'error': 'Funcionalidad no disponible temporalmente'})
+
+@app.route('/admin/api/delete-keyword', methods=['POST'])
+def admin_delete_keyword():
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        
+        if not keyword:
+            return jsonify({'success': False, 'error': 'Falta el parámetro keyword'})
+        
+        # Update all vehicles with this keyword to remove it
+        vehicles = Vehicle.query.filter_by(seller_keyword=keyword).all()
+        for vehicle in vehicles:
+            vehicle.seller_keyword = None
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Palabra clave eliminada. {len(vehicles)} vehículos afectados.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Error al eliminar la palabra clave'})
 
 @app.route('/admin/restore_backup', methods=['POST'])
 def admin_restore_backup():
