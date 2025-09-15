@@ -159,28 +159,20 @@
                                         {{ backup.name }}
                                     </td>
                                     <td>
-                                        <span class="badge 
-                                            {% if backup.type == 'daily' %}bg-primary
-                                            {% elif backup.type == 'weekly' %}bg-info
-                                            {% elif backup.type == 'monthly' %}bg-success
-                                            {% else %}bg-secondary{% endif %}">
-                                            {% if backup.type == 'daily' %}Diario
-                                            {% elif backup.type == 'weekly' %}Semanal
-                                            {% elif backup.type == 'monthly' %}Mensual
-                                            {% else %}Manual{% endif %}
-                                        </span>
+                                        <span class="badge bg-primary">{{ backup.type }}</span>
                                     </td>
                                     <td>{{ backup.date.strftime('%d/%m/%Y %H:%M') }}</td>
-                                    <td>{{ "%.1f"|format(backup.size / (1024*1024)) }} MB</td>
+                                    <td>{{ (backup.size / 1024 / 1024) | round(2) }} MB</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ url_for('admin_download_backup', backup_file=backup.path) }}" 
-                                               class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-download"></i>
+                                            <button class="btn btn-outline-warning" onclick="selectBackupForRestore('{{ backup.path }}', '{{ backup.name }}')">
+                                                <i class="fas fa-undo me-1"></i>Restaurar
+                                            </button>
+                                            <a href="{{ url_for('admin_download_backup', backup_file=backup.path) }}" class="btn btn-outline-primary">
+                                                <i class="fas fa-download me-1"></i>Descargar
                                             </a>
-                                            <button type="button" class="btn btn-outline-warning btn-sm" 
-                                                    onclick="selectBackupForRestore('{{ backup.path }}', '{{ backup.name }}')">
-                                                <i class="fas fa-undo"></i>
+                                            <button class="btn btn-outline-danger" onclick="deleteBackup('{{ backup.path }}', '{{ backup.name }}')">
+                                                <i class="fas fa-trash me-1"></i>Eliminar
                                             </button>
                                         </div>
                                     </td>
@@ -341,6 +333,33 @@ document.addEventListener('DOMContentLoaded', function() {
 function selectBackupForRestore(path, name) {
     document.getElementById('backup_file').value = path;
     new bootstrap.Modal(document.getElementById('restoreModal')).show();
+}
+
+// Function to delete backup
+function deleteBackup(backupPath, backupName) {
+    if (confirm(`¿Estás seguro de que quieres eliminar el backup "${backupName}"?\n\nEsta acción no se puede deshacer.`)) {
+        fetch('/admin/delete_backup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                backup_path: backupPath
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Backup eliminado exitosamente');
+                location.reload();
+            } else {
+                alert('Error al eliminar backup: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error al eliminar backup: ' + error);
+        });
+    }
 }
 
 // Auto-refresh del estado cada 30 segundos

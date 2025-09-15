@@ -1877,15 +1877,41 @@ def admin_restore_backup():
     
     return redirect(url_for('admin_backup_dashboard'))
 
+@app.route('/admin/delete_backup', methods=['POST'])
+def admin_delete_backup():
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'})
+    
+    try:
+        data = request.get_json()
+        backup_path = data.get('backup_path')
+        
+        if not backup_path or '..' in backup_path:
+            return jsonify({'success': False, 'error': 'Ruta de backup inválida'})
+        
+        # Check if file exists
+        if not os.path.exists(backup_path):
+            return jsonify({'success': False, 'error': 'Archivo de backup no encontrado'})
+        
+        # Delete the backup file
+        os.remove(backup_path)
+        
+        # Also delete manifest file if exists
+        manifest_path = backup_path.replace('.zip', '_manifest.json')
+        if os.path.exists(manifest_path):
+            os.remove(manifest_path)
+        
+        return jsonify({'success': True, 'message': 'Backup eliminado exitosamente'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/admin/download_backup/<path:backup_file>')
 def admin_download_backup(backup_file):
     if not session.get('admin_logged_in'):
         return redirect(url_for('panel_login'))
     
     try:
-        import os
-        from flask import send_file
-        
         # Validate backup file path for security
         if not backup_file or '..' in backup_file:
             flash('Archivo de backup inválido', 'error')
@@ -1899,11 +1925,12 @@ def admin_download_backup(backup_file):
         # Get filename for download
         filename = os.path.basename(backup_file)
         
+        # Send file
         return send_file(
             backup_file,
             as_attachment=True,
             download_name=filename,
-            mimetype='application/octet-stream'
+            mimetype='application/zip'
         )
         
     except Exception as e:

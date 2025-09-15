@@ -231,15 +231,22 @@ class BackupManager:
             with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, 
                                compresslevel=self.config['compression_level']) as zipf:
                 
+                # Check if backup_path has any files
+                files_added = 0
                 for file_path in backup_path.rglob('*'):
                     if file_path.is_file():
                         arcname = file_path.relative_to(backup_path)
                         zipf.write(file_path, arcname)
+                        files_added += 1
+                
+                # If no files were added, add a placeholder
+                if files_added == 0:
+                    zipf.writestr('backup_info.txt', f'Backup created on {datetime.datetime.now()}\nNo database or uploads found to backup.')
             
             # Eliminar carpeta temporal después de comprimir
             shutil.rmtree(backup_path)
             
-            logging.info(f"Archivo de backup creado: {archive_path}")
+            logging.info(f"Archivo de backup creado: {archive_path} ({files_added} archivos)")
             return archive_path
             
         except Exception as e:
