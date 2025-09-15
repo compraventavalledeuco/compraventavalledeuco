@@ -666,8 +666,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mainImageBadge) {
                 const mainCard = mainImageBadge.closest('.image-preview-card');
                 const mainIndex = parseInt(mainCard.getAttribute('data-index'));
-                const actualIndex = images.findIndex(img => img.id === mainIndex);
-                mainImageIndexInput.value = actualIndex >= 0 ? actualIndex : 0;
+                // The data-index directly corresponds to the position in the images array
+                mainImageIndexInput.value = mainIndex >= 0 && mainIndex < images.length ? mainIndex : 0;
             } else {
                 mainImageIndexInput.value = 0; // Default to first image if no main selected
             }
