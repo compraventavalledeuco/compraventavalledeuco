@@ -717,10 +717,27 @@ def client_request():
         
         # Optional seller keyword
         seller_keyword = request.form.get('seller_keyword', '').strip()
+        dni_clean = request.form['dni'].replace('.', '')  # Remove dots from DNI
+        
+        # Check if this DNI already has a different seller_keyword
+        if seller_keyword:
+            existing_requests = ClientRequest.query.filter_by(dni=dni_clean).all()
+            if existing_requests:
+                # Update all existing requests from this DNI to use the new seller_keyword
+                for existing_req in existing_requests:
+                    if existing_req.seller_keyword != seller_keyword:
+                        existing_req.seller_keyword = seller_keyword
+                        
+                        # Also update any vehicles associated with those requests
+                        vehicles_to_update = Vehicle.query.filter_by(client_request_id=existing_req.id).all()
+                        for vehicle in vehicles_to_update:
+                            vehicle.seller_keyword = seller_keyword
+                
+                db.session.commit()
 
         client_request = ClientRequest(
             full_name=request.form['full_name'],
-            dni=request.form['dni'].replace('.', ''),  # Remove dots from DNI
+            dni=dni_clean,
             whatsapp_number=whatsapp_number if whatsapp_number else None,
             call_number=call_number if call_number else None,
             phone_number=whatsapp_number or call_number,  # Legacy field compatibility
@@ -937,7 +954,21 @@ def edit_client_request(request_id):
         
         client_request.full_name = request.form['full_name']
         client_request.dni = request.form['dni']
-        client_request.seller_keyword = request.form.get('seller_keyword', '').strip() or None
+        new_seller_keyword = request.form.get('seller_keyword', '').strip() or None
+        
+        # Check if this DNI already has a different seller_keyword in other requests
+        if new_seller_keyword and new_seller_keyword != client_request.seller_keyword:
+            existing_requests = ClientRequest.query.filter_by(dni=client_request.dni).all()
+            for existing_req in existing_requests:
+                if existing_req.seller_keyword != new_seller_keyword:
+                    existing_req.seller_keyword = new_seller_keyword
+                    
+                    # Also update any vehicles associated with those requests
+                    vehicles_to_update = Vehicle.query.filter_by(client_request_id=existing_req.id).all()
+                    for vehicle in vehicles_to_update:
+                        vehicle.seller_keyword = new_seller_keyword
+        
+        client_request.seller_keyword = new_seller_keyword
         client_request.email = request.form.get('email', '')
         client_request.phone_number = request.form.get('phone_number', '')
         client_request.location = request.form.get('location', '')
