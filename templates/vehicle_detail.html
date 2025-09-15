@@ -282,20 +282,25 @@
                                     <i class="fas fa-share me-2"></i>Compartir Publicación
                                 </button>
                             </div>
+                            {% if seller_vehicle_count > 1 %}
                             <div class="col-6">
                                 <button type="button" class="btn btn-outline-secondary w-100" 
                                         id="shareSellerBtn"
                                         data-seller-keyword="{{ vehicle.seller_keyword or '' }}"
-                                        data-seller-name="{{ vehicle.contact_name or 'Vendedor' }}">
+                                        data-seller-name="{{ seller_name }}">
                                     <i class="fas fa-user-share me-2"></i>Compartir Vehículos de Vendedor
                                 </button>
                             </div>
+                            {% else %}
+                            <div class="col-6">
+                                <!-- Botón oculto cuando el vendedor tiene solo 1 vehículo -->
+                            </div>
+                            {% endif %}
                         </div>
                         {% if vehicle.seller_keyword %}
 
                         {% endif %}
                     </div>
-                </div>
             </div>
 
 

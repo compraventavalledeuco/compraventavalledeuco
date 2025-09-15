@@ -274,7 +274,35 @@ def vehicle_detail(id):
     db.session.add(view)
     db.session.commit()
     
-    return render_template('vehicle_detail.html', vehicle=vehicle)
+    # Check if seller has multiple vehicles (for share button)
+    seller_vehicle_count = 0
+    seller_name = "Vendedor"
+    
+    if vehicle.client_request_id:
+        # Get the original client request to find DNI
+        client_request = ClientRequest.query.get(vehicle.client_request_id)
+        if client_request and client_request.dni:
+            # Count vehicles from the same DNI (through client requests)
+            seller_requests = ClientRequest.query.filter_by(
+                dni=client_request.dni,
+                status='approved'
+            ).all()
+            
+            # Count active vehicles from these requests
+            for req in seller_requests:
+                vehicle_from_request = Vehicle.query.filter_by(
+                    client_request_id=req.id,
+                    is_active=True
+                ).first()
+                if vehicle_from_request:
+                    seller_vehicle_count += 1
+            
+            seller_name = client_request.full_name
+    
+    return render_template('vehicle_detail.html', 
+                         vehicle=vehicle, 
+                         seller_vehicle_count=seller_vehicle_count,
+                         seller_name=seller_name)
 
 @app.route('/track_click/<int:vehicle_id>/<click_type>')
 def track_click(vehicle_id, click_type):
