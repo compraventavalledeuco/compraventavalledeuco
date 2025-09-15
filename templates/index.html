@@ -300,8 +300,9 @@
                                 <!-- Carousel for plus vehicles -->
                                 <div id="carousel{{ vehicle.id }}" class="carousel slide" data-bs-ride="false">
                                     <div class="carousel-inner">
+                                        {% set main_index = vehicle.main_image_index if (vehicle.main_image_index is not none and vehicle.main_image_index < images|length) else 0 %}
                                         {% for image in images %}
-                                        <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                        <div class="carousel-item {% if loop.index0 == main_index %}active{% endif %}">
                                             <a href="{{ url_for('vehicle_detail', id=vehicle.id) }}" class="text-decoration-none">
                                                 <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" 
                                                      class="card-img-top vehicle-image img-fallback" 
