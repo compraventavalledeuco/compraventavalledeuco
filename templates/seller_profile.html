@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seller_info.name }} - {{ seller_info.keyword }} | Marketplace Valle de Uco{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Seller Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <h1 class="h2 fw-bold mb-2">
+                <i class="fas fa-store me-3"></i>{{ seller_info.name }}
+              </h1>
+              <p class="mb-2">
+                <i class="fas fa-key me-2"></i>
+                <strong>Palabra Clave:</strong> {{ seller_info.keyword }}
+              </p>
+              {% if seller_info.location %}
+              <p class="mb-2">
+                <i class="fas fa-map-marker-alt me-2"></i>{{ seller_info.location }}
+              </p>
+              {% endif %}
+              <div class="d-flex align-items-center">
+                <span class="badge bg-light text-dark me-3">
+                  <i class="fas fa-car me-1"></i>{{ seller_info.total_vehicles }} vehículos
+                </span>
+                {% if seller_stats.total_views > 0 %}
+                <span class="badge bg-light text-dark me-3">
+                  <i class="fas fa-eye me-1"></i>{{ seller_stats.total_views }} visualizaciones
+                </span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4 text-md-end">
+              {% if seller_info.whatsapp %}
+              <a href="https://wa.me/{{ seller_info.whatsapp.replace('+', '') }}?text=Hola! Vi tu perfil de vendedor {{ seller_info.keyword }} en Marketplace Valle de Uco" 
+                 class="btn btn-success btn-lg mb-2" target="_blank">
+                <i class="fab fa-whatsapp me-2"></i>Contactar por WhatsApp
+              </a>
+              <br>
+              {% endif %}
+              <button class="btn btn-light btn-sm" onclick="shareProfile()">
+                <i class="fas fa-share-alt me-1"></i>Compartir Perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('index', search=seller_info.keyword) }}" class="btn btn-outline-primary">
+          <i class="fas fa-search me-1"></i>Buscar "{{ seller_info.keyword }}"
+        </a>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+          <i class="fas fa-home me-1"></i>Todos los Vehículos
+        </a>
+        {% if seller_stats.avg_price > 0 %}
+        <span class="btn btn-outline-info disabled">
+          <i class="fas fa-dollar-sign me-1"></i>Precio promedio: ${{ "{:,}".format(seller_stats.avg_price).replace(",", ".") }}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if vehicles %}
+  <div class="row">
+    {% for vehicle in vehicles %}
+    <div class="col-lg-4 col-md-6 mb-4">
+      <a href="{{ url_for('vehicle_detail', id=vehicle.id) }}" class="text-decoration-none">
+        <div class="card h-100 shadow-sm">
+          {% set main_img = vehicle.get_main_image() %}
+          <img src="{% if main_img.startswith('http') %}{{ main_img }}{% else %}{{ url_for('static', filename=main_img) }}{% endif %}"
+               class="card-img-top seller-fallback-img"
+               style="height: 200px; object-fit: cover;"
+               alt="{{ vehicle.title }}"
+               data-fallback="{{ url_for('static', filename='placeholder-car.png') }}" />
+          <div class="card-body">
+            <h5 class="card-title mb-2">{{ vehicle.title }}</h5>
+            <div class="{{ vehicle.get_currency_class() }} fw-bold mb-2">{{ vehicle.format_price_with_currency() }}</div>
+            <div class="text-muted small">
+              {% if vehicle.year %}{{ vehicle.year }}{% endif %}
+              {% if vehicle.kilometers %} • {{ "{:,}".format(vehicle.kilometers).replace(",", ".") }} km{% endif %}
+              {% if vehicle.fuel_type %} • {{ vehicle.fuel_type }}{% endif %}
+            </div>
+          </div>
+          <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+            <span class="badge {{ 'bg-warning' if vehicle.is_plus else 'bg-secondary' }}">
+              {% if vehicle.is_plus %}<i class="fas fa-star me-1"></i>Plus{% else %}<i class="fas fa-gift me-1"></i>Gratuita{% endif %}
+            </span>
+            <span class="badge bg-light text-dark">
+              <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
+            </span>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="fas fa-info-circle text-muted" style="font-size: 3rem;"></i>
+    <h5 class="mt-3">No hay vehículos para esta palabra clave</h5>
+    <p class="text-muted">Asegúrate de escribir correctamente la palabra clave.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
+      <i class="fas fa-arrow-left me-1"></i>Volver al inicio
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.seller-fallback-img').forEach(function(img){
+    const fallback = img.getAttribute('data-fallback');
+    img.addEventListener('error', function(){
+      if (img.src !== fallback) {
+        img.src = fallback;
+      }
+    });
+  });
+});
+
+function shareProfile() {
+  const url = window.location.href;
+  const title = '{{ seller_info.name }} - Vendedor en Marketplace Valle de Uco';
+  const text = 'Mira todos los vehículos de {{ seller_info.name }} ({{ seller_info.keyword }}) en Marketplace Valle de Uco';
+  
+  if (navigator.share) {
+    navigator.share({
+      title: title,
+      text: text,
+      url: url
+    }).catch(console.error);
+  } else {
+    // Fallback: copy to clipboard
+    navigator.clipboard.writeText(url).then(() => {
+      alert('¡Enlace copiado al portapapeles!\n\n' + url);
+    }).catch(() => {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('¡Enlace copiado al portapapeles!\n\n' + url);
+    });
+  }
+}
+</script>
+{% endblock %}
