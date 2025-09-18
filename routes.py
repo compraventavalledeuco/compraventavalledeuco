@@ -1312,8 +1312,23 @@ def delete_vehicle_ajax(vehicle_id):
             for i, image_url in enumerate(image_urls):
                 print(f"🔍 DEBUG: Processing image {i+1}: {image_url}")
                 
+                # Skip invalid or empty image URLs
+                if not isinstance(image_url, str) or not image_url.strip():
+                    print(f"🔍 DEBUG: Skipping invalid/empty image URL: {image_url}")
+                    continue
+                
+                # Skip directory paths and invalid paths
+                if image_url in ['/', '.', '..'] or image_url.endswith('/.') or image_url.endswith('/..'):
+                    print(f"🔍 DEBUG: Skipping directory path: {image_url}")
+                    continue
+                
+                # Skip paths that look like directories (no file extension and end with /)
+                if image_url.endswith('/') and '.' not in os.path.basename(image_url):
+                    print(f"🔍 DEBUG: Skipping directory-like path: {image_url}")
+                    continue
+                
                 # Delete from Cloudinary if it's a Cloudinary URL
-                if isinstance(image_url, str) and ('cloudinary.com' in image_url or 'res.cloudinary.com' in image_url):
+                if 'cloudinary.com' in image_url or 'res.cloudinary.com' in image_url:
                     print(f"🔍 DEBUG: Detected Cloudinary URL: {image_url}")
                     try:
                         # Extract public_id from Cloudinary URL
@@ -1363,18 +1378,36 @@ def delete_vehicle_ajax(vehicle_id):
                         traceback.print_exc()
                 
                 # Also try to delete from local filesystem (legacy support)
-                elif isinstance(image_url, str) and not image_url.startswith('http'):
+                elif not image_url.startswith('http'):
                     print(f"🔍 DEBUG: Processing local image: {image_url}")
+                    
+                    # Additional validation for local paths
+                    if not image_url or image_url.startswith('/') or '..' in image_url:
+                        print(f"🔍 DEBUG: Skipping potentially dangerous local path: {image_url}")
+                        continue
+                    
                     upload_folder = app.config.get('UPLOAD_FOLDER', 'static/uploads')
                     full_path = os.path.join(upload_folder, image_url)
-                    if os.path.exists(full_path):
+                    
+                    # Ensure the path is within the upload folder (security check)
+                    try:
+                        real_upload_folder = os.path.realpath(upload_folder)
+                        real_full_path = os.path.realpath(full_path)
+                        if not real_full_path.startswith(real_upload_folder):
+                            print(f"🔍 DEBUG: Skipping path outside upload folder: {image_url}")
+                            continue
+                    except Exception as e:
+                        print(f"🔍 DEBUG: Error validating path {image_url}: {e}")
+                        continue
+                    
+                    if os.path.exists(full_path) and os.path.isfile(full_path):
                         try:
                             os.remove(full_path)
                             print(f"🗑️ Deleted local image: {full_path}")
                         except OSError as e:
                             print(f"❌ Error deleting local image {full_path}: {e}")
                     else:
-                        print(f"🔍 DEBUG: Local file not found: {full_path}")
+                        print(f"🔍 DEBUG: Local file not found or is not a file: {full_path}")
                 else:
                     print(f"🔍 DEBUG: Skipping image (not Cloudinary or local): {image_url}")
         else:
