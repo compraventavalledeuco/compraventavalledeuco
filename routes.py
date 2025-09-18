@@ -580,41 +580,13 @@ def edit_vehicle(id):
                         flash(f"Error subiendo imagen: {upload_result['error']}", 'error')
                         print(f"[ADMIN EDIT] File image upload ERROR -> {upload_result['error']}")
         
-        # 3) Handle current images management (selection and deletion)
-        current_images = vehicle.get_images_list()
-        updated_current_images = current_images.copy()
-        
-        # Handle deleted images
-        deleted_images_str = request.form.get('deleted_images', '')
-        if deleted_images_str:
-            deleted_indices = [int(idx) for idx in deleted_images_str.split(',') if idx.strip()]
-            # Remove deleted images (in reverse order to maintain indices)
-            for idx in sorted(deleted_indices, reverse=True):
-                if 0 <= idx < len(updated_current_images):
-                    print(f"[ADMIN EDIT] Deleting image at index {idx}: {updated_current_images[idx][:50]}...")
-                    updated_current_images.pop(idx)
-        
-        # Handle current main image selection
-        current_main_index = request.form.get('current_main_image_index')
-        if current_main_index is not None and updated_current_images:
-            try:
-                new_main_index = int(current_main_index)
-                if 0 <= new_main_index < len(updated_current_images):
-                    vehicle.main_image_index = new_main_index
-                    print(f"[ADMIN EDIT] Updated main image index to: {new_main_index}")
-                else:
-                    vehicle.main_image_index = 0
-            except (ValueError, TypeError):
-                vehicle.main_image_index = 0
-        
-        # 4) Persist results: update gallery and main index if we uploaded new images
+        # 3) Persist results: update gallery and main index if we uploaded new images
         if new_image_urls:
-            # If new images uploaded, replace all images
             vehicle.images = json.dumps(new_image_urls)
             # Backward-compat: also map first 10 to image_1..image_10
             for idx, url in enumerate(new_image_urls[:10], start=1):
                 setattr(vehicle, f'image_{idx}', url)
-            # Set main image index for new images
+            # Set main image index
             try:
                 main_image_index = int(request.form.get('main_image_index', 0))
                 if main_image_index < 0 or main_image_index >= len(new_image_urls):
@@ -622,21 +594,9 @@ def edit_vehicle(id):
                 vehicle.main_image_index = main_image_index
             except (ValueError, TypeError):
                 vehicle.main_image_index = 0
-            print(f"[ADMIN EDIT] Saved {len(new_image_urls)} NEW images to gallery. main_image_index={vehicle.main_image_index}")
-        elif updated_current_images != current_images:
-            # If current images were modified (deleted), update the gallery
-            vehicle.images = json.dumps(updated_current_images)
-            # Backward-compat: also map first 10 to image_1..image_10
-            for idx in range(1, 11):
-                setattr(vehicle, f'image_{idx}', None)
-            for idx, url in enumerate(updated_current_images[:10], start=1):
-                setattr(vehicle, f'image_{idx}', url)
-            # Adjust main image index if necessary
-            if vehicle.main_image_index >= len(updated_current_images):
-                vehicle.main_image_index = max(0, len(updated_current_images) - 1)
-            print(f"[ADMIN EDIT] Updated current images gallery. Remaining: {len(updated_current_images)} images. main_image_index={vehicle.main_image_index}")
+            print(f"[ADMIN EDIT] Saved {len(new_image_urls)} images to gallery. main_image_index={vehicle.main_image_index}")
         else:
-            print("[ADMIN EDIT] No image changes in this request")
+            print("[ADMIN EDIT] No new images uploaded in this request")
         
         db.session.commit()
         flash('Vehículo actualizado exitosamente', 'success')
@@ -696,17 +656,89 @@ def delete_vehicle(id):
     
     vehicle = Vehicle.query.get_or_404(id)
     
-    # Delete associated images from filesystem
+    print(f"🔍 DEBUG: Vehicle images field: {vehicle.images}")
+    print(f"🔍 DEBUG: Vehicle images type: {type(vehicle.images)}")
+    
     if vehicle.images:
-        image_urls = json.loads(vehicle.images)
-        for image_url in image_urls:
-            if image_url.startswith('uploads/'):
+        try:
+            image_urls = json.loads(vehicle.images)
+            print(f"🔍 DEBUG: Parsed JSON images: {image_urls}")
+        except Exception as e:
+            print(f"🔍 DEBUG: JSON parse failed: {e}, treating as single string")
+            image_urls = [vehicle.images]
+        
+        print(f"🔍 DEBUG: Processing {len(image_urls)} images")
+        
+        for i, image_url in enumerate(image_urls):
+            print(f"🔍 DEBUG: Processing image {i+1}: {image_url}")
+            
+            # Delete from Cloudinary if it's a Cloudinary URL
+            if 'cloudinary.com' in image_url or 'res.cloudinary.com' in image_url:
+                print(f"🔍 DEBUG: Detected Cloudinary URL: {image_url}")
+                try:
+                    # Extract public_id from Cloudinary URL
+                    # URL format: https://res.cloudinary.com/cloud_name/image/upload/v123456/folder/public_id.ext
+                    url_parts = image_url.split('/')
+                    print(f"🔍 DEBUG: URL parts: {url_parts}")
+                    
+                    if len(url_parts) >= 2:
+                        # Find the part after 'upload' or 'upload/v123456'
+                        upload_index = -1
+                        for j, part in enumerate(url_parts):
+                            if part == 'upload':
+                                upload_index = j
+                                break
+                        
+                        print(f"🔍 DEBUG: Upload index found at: {upload_index}")
+                        
+                        if upload_index != -1:
+                            # Get everything after upload (skip version if present)
+                            remaining_parts = url_parts[upload_index + 1:]
+                            print(f"🔍 DEBUG: Remaining parts after upload: {remaining_parts}")
+                            
+                            if remaining_parts and remaining_parts[0].startswith('v'):
+                                # Skip version number
+                                remaining_parts = remaining_parts[1:]
+                                print(f"🔍 DEBUG: After skipping version: {remaining_parts}")
+                            
+                            if remaining_parts:
+                                # Join the remaining parts and remove file extension
+                                public_id = '/'.join(remaining_parts)
+                                public_id = os.path.splitext(public_id)[0]  # Remove extension
+                                
+                                print(f"🗑️ Attempting to delete Cloudinary image with public_id: {public_id}")
+                                success = delete_from_cloudinary(public_id)
+                                if success:
+                                    print(f"✅ Successfully deleted from Cloudinary: {public_id}")
+                                else:
+                                    print(f"❌ Failed to delete from Cloudinary: {public_id}")
+                            else:
+                                print(f"❌ No remaining parts to form public_id")
+                        else:
+                            print(f"❌ 'upload' not found in URL parts")
+                    else:
+                        print(f"❌ URL has insufficient parts: {len(url_parts)}")
+                except Exception as e:
+                    print(f"❌ Error deleting Cloudinary image {image_url}: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # Also try to delete from local filesystem (legacy support)
+            elif image_url.startswith('uploads/'):
+                print(f"🔍 DEBUG: Processing local image: {image_url}")
                 image_path = os.path.join('static', image_url)
                 if os.path.exists(image_path):
                     try:
                         os.remove(image_path)
-                    except OSError:
-                        pass  # Ignore if file can't be deleted
+                        print(f"🗑️ Deleted local image: {image_path}")
+                    except OSError as e:
+                        print(f"❌ Error deleting local image {image_path}: {e}")
+                else:
+                    print(f"🔍 DEBUG: Local file not found: {image_path}")
+            else:
+                print(f"🔍 DEBUG: Skipping image (not Cloudinary or local): {image_url}")
+    else:
+        print("🔍 DEBUG: No images found in vehicle.images")
     
     # Delete related VehicleView records first
     VehicleView.query.filter_by(vehicle_id=id).delete()
@@ -867,15 +899,10 @@ def client_request():
         # Get main image index from form
         try:
             main_image_index = int(request.form.get('main_image_index', 0))
-            print(f"[CLIENT REQUEST] Received main_image_index from form: {main_image_index}")
             # Ensure index is valid
             if main_image_index < 0 or main_image_index >= len(image_urls):
-                print(f"[CLIENT REQUEST] Invalid main_image_index {main_image_index}, resetting to 0. Image count: {len(image_urls)}")
                 main_image_index = 0
-            else:
-                print(f"[CLIENT REQUEST] Valid main_image_index: {main_image_index}")
         except (ValueError, TypeError):
-            print(f"[CLIENT REQUEST] Error parsing main_image_index, defaulting to 0")
             main_image_index = 0
         
         client_request.images = json.dumps(image_urls)
@@ -1031,33 +1058,6 @@ def edit_client_request(request_id):
         client_request.color = request.form.get('color', '')
         client_request.admin_notes = request.form.get('admin_notes', '')
         
-        # Handle current images management (selection and deletion)
-        current_images = client_request.get_images_list()
-        updated_current_images = current_images.copy()
-        
-        # Handle deleted images
-        deleted_images_str = request.form.get('deleted_images', '')
-        if deleted_images_str:
-            deleted_indices = [int(idx) for idx in deleted_images_str.split(',') if idx.strip()]
-            # Remove deleted images (in reverse order to maintain indices)
-            for idx in sorted(deleted_indices, reverse=True):
-                if 0 <= idx < len(updated_current_images):
-                    print(f"[ADMIN EDIT REQUEST] Deleting image at index {idx}: {updated_current_images[idx][:50]}...")
-                    updated_current_images.pop(idx)
-        
-        # Handle current main image selection
-        current_main_index = request.form.get('current_main_image_index')
-        if current_main_index is not None and updated_current_images:
-            try:
-                new_main_index = int(current_main_index)
-                if 0 <= new_main_index < len(updated_current_images):
-                    client_request.main_image_index = new_main_index
-                    print(f"[ADMIN EDIT REQUEST] Updated main image index to: {new_main_index}")
-                else:
-                    client_request.main_image_index = 0
-            except (ValueError, TypeError):
-                client_request.main_image_index = 0
-        
         # Handle new uploaded images
         new_image_urls = []
         if 'vehicle_images' in request.files:
@@ -1078,15 +1078,6 @@ def edit_client_request(request_id):
                 
                 if new_image_urls:  # Replace images only if new ones were uploaded
                     client_request.images = json.dumps(new_image_urls)
-                    client_request.main_image_index = 0  # Reset to first image for new uploads
-                    print(f"[ADMIN EDIT REQUEST] Replaced with {len(new_image_urls)} new images")
-        elif updated_current_images != current_images:
-            # If current images were modified (deleted), update the gallery
-            client_request.images = json.dumps(updated_current_images)
-            # Adjust main image index if necessary
-            if client_request.main_image_index >= len(updated_current_images):
-                client_request.main_image_index = max(0, len(updated_current_images) - 1)
-            print(f"[ADMIN EDIT REQUEST] Updated current images. Remaining: {len(updated_current_images)} images. main_image_index={client_request.main_image_index}")
         
         # Also update the associated vehicle if it exists
         vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
@@ -1113,14 +1104,9 @@ def edit_client_request(request_id):
             vehicle.location = client_request.location
             vehicle.address = client_request.address
             
-            # Update images and main image index
+            # Update images if new ones were uploaded
             if new_image_urls:
                 vehicle.images = json.dumps(new_image_urls)
-                vehicle.main_image_index = 0  # Reset to first image for new uploads
-            elif updated_current_images != current_images:
-                # If current images were modified, update vehicle images too
-                vehicle.images = json.dumps(updated_current_images)
-                vehicle.main_image_index = client_request.main_image_index
             print(f"DEBUG: Vehicle updated - Title: {vehicle.title}, Price: {vehicle.price}")
         else:
             print(f"DEBUG: No vehicle found for client_request_id {request_id}")
@@ -1301,18 +1287,131 @@ def delete_vehicle_ajax(vehicle_id):
     try:
         vehicle = Vehicle.query.get_or_404(vehicle_id)
         
-        # Delete associated images from filesystem
+        # Delete associated images from Cloudinary and filesystem
         import os
         upload_folder = app.config['UPLOAD_FOLDER']
         
+        print(f"🔍 DEBUG: Vehicle images field: {vehicle.images}")
+        print(f"🔍 DEBUG: Vehicle images type: {type(vehicle.images)}")
+        
         if vehicle.images:
-            for image_path in vehicle.images:
-                full_path = os.path.join(upload_folder, image_path)
-                if os.path.exists(full_path):
+            # Handle both JSON string and list formats
+            if isinstance(vehicle.images, str):
+                try:
+                    image_urls = json.loads(vehicle.images)
+                    print(f"🔍 DEBUG: Parsed JSON images: {image_urls}")
+                except Exception as e:
+                    print(f"🔍 DEBUG: JSON parse failed: {e}, treating as single string")
+                    image_urls = [vehicle.images]  # Single image as string
+            else:
+                image_urls = vehicle.images if isinstance(vehicle.images, list) else []
+                print(f"🔍 DEBUG: Using images as list: {image_urls}")
+            
+            print(f"🔍 DEBUG: Processing {len(image_urls)} images")
+            
+            for i, image_url in enumerate(image_urls):
+                print(f"🔍 DEBUG: Processing image {i+1}: {image_url}")
+                
+                # Skip invalid or empty image URLs
+                if not isinstance(image_url, str) or not image_url.strip():
+                    print(f"🔍 DEBUG: Skipping invalid/empty image URL: {image_url}")
+                    continue
+                
+                # Skip directory paths and invalid paths
+                if image_url in ['/', '.', '..'] or image_url.endswith('/.') or image_url.endswith('/..'):
+                    print(f"🔍 DEBUG: Skipping directory path: {image_url}")
+                    continue
+                
+                # Skip paths that look like directories (no file extension and end with /)
+                if image_url.endswith('/') and '.' not in os.path.basename(image_url):
+                    print(f"🔍 DEBUG: Skipping directory-like path: {image_url}")
+                    continue
+                
+                # Delete from Cloudinary if it's a Cloudinary URL
+                if 'cloudinary.com' in image_url or 'res.cloudinary.com' in image_url:
+                    print(f"🔍 DEBUG: Detected Cloudinary URL: {image_url}")
                     try:
-                        os.remove(full_path)
-                    except OSError as e:
-                        print(f"Error deleting image {full_path}: {e}")
+                        # Extract public_id from Cloudinary URL
+                        url_parts = image_url.split('/')
+                        print(f"🔍 DEBUG: URL parts: {url_parts}")
+                        
+                        if len(url_parts) >= 2:
+                            # Find the part after 'upload'
+                            upload_index = -1
+                            for j, part in enumerate(url_parts):
+                                if part == 'upload':
+                                    upload_index = j
+                                    break
+                            
+                            print(f"🔍 DEBUG: Upload index found at: {upload_index}")
+                            
+                            if upload_index != -1:
+                                # Get everything after upload (skip version if present)
+                                remaining_parts = url_parts[upload_index + 1:]
+                                print(f"🔍 DEBUG: Remaining parts after upload: {remaining_parts}")
+                                
+                                if remaining_parts and remaining_parts[0].startswith('v'):
+                                    # Skip version number
+                                    remaining_parts = remaining_parts[1:]
+                                    print(f"🔍 DEBUG: After skipping version: {remaining_parts}")
+                                
+                                if remaining_parts:
+                                    # Join the remaining parts and remove file extension
+                                    public_id = '/'.join(remaining_parts)
+                                    public_id = os.path.splitext(public_id)[0]  # Remove extension
+                                    
+                                    print(f"🗑️ Attempting to delete Cloudinary image with public_id: {public_id}")
+                                    success = delete_from_cloudinary(public_id)
+                                    if success:
+                                        print(f"✅ Successfully deleted from Cloudinary: {public_id}")
+                                    else:
+                                        print(f"❌ Failed to delete from Cloudinary: {public_id}")
+                                else:
+                                    print(f"❌ No remaining parts to form public_id")
+                            else:
+                                print(f"❌ 'upload' not found in URL parts")
+                        else:
+                            print(f"❌ URL has insufficient parts: {len(url_parts)}")
+                    except Exception as e:
+                        print(f"❌ Error deleting Cloudinary image {image_url}: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+                # Also try to delete from local filesystem (legacy support)
+                elif not image_url.startswith('http'):
+                    print(f"🔍 DEBUG: Processing local image: {image_url}")
+                    
+                    # Additional validation for local paths
+                    if not image_url or image_url.startswith('/') or '..' in image_url:
+                        print(f"🔍 DEBUG: Skipping potentially dangerous local path: {image_url}")
+                        continue
+                    
+                    upload_folder = app.config.get('UPLOAD_FOLDER', 'static/uploads')
+                    full_path = os.path.join(upload_folder, image_url)
+                    
+                    # Ensure the path is within the upload folder (security check)
+                    try:
+                        real_upload_folder = os.path.realpath(upload_folder)
+                        real_full_path = os.path.realpath(full_path)
+                        if not real_full_path.startswith(real_upload_folder):
+                            print(f"🔍 DEBUG: Skipping path outside upload folder: {image_url}")
+                            continue
+                    except Exception as e:
+                        print(f"🔍 DEBUG: Error validating path {image_url}: {e}")
+                        continue
+                    
+                    if os.path.exists(full_path) and os.path.isfile(full_path):
+                        try:
+                            os.remove(full_path)
+                            print(f"🗑️ Deleted local image: {full_path}")
+                        except OSError as e:
+                            print(f"❌ Error deleting local image {full_path}: {e}")
+                    else:
+                        print(f"🔍 DEBUG: Local file not found or is not a file: {full_path}")
+                else:
+                    print(f"🔍 DEBUG: Skipping image (not Cloudinary or local): {image_url}")
+        else:
+            print("🔍 DEBUG: No images found in vehicle.images")
         
         # Delete related VehicleView records first
         VehicleView.query.filter_by(vehicle_id=vehicle_id).delete()
@@ -2000,28 +2099,16 @@ def admin_download_backup(backup_file):
     try:
         # Validate backup file path for security
         if not backup_file or '..' in backup_file:
-            app.logger.error(f'Invalid backup file path: {backup_file}')
             flash('Archivo de backup inválido', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Check if file exists
         if not os.path.exists(backup_file):
-            app.logger.error(f'Backup file not found: {backup_file}')
             flash('Archivo de backup no encontrado', 'error')
-            return redirect(url_for('admin_backup_dashboard'))
-        
-        # Check file size
-        file_size = os.path.getsize(backup_file)
-        app.logger.info(f'Backup file size: {file_size} bytes for file: {backup_file}')
-        
-        if file_size == 0:
-            app.logger.error(f'Backup file is empty (0 bytes): {backup_file}')
-            flash('El archivo de backup está vacío (0 MB)', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Get filename for download
         filename = os.path.basename(backup_file)
-        app.logger.info(f'Downloading backup: {filename} ({file_size} bytes)')
         
         # Send file
         return send_file(
@@ -2032,7 +2119,6 @@ def admin_download_backup(backup_file):
         )
         
     except Exception as e:
-        app.logger.error(f'Error downloading backup: {str(e)}')
         flash(f'Error al descargar backup: {str(e)}', 'error')
         return redirect(url_for('admin_backup_dashboard'))
 

@@ -5,7 +5,7 @@ echo ========================================
 
 echo.
 echo Configurando repositorio remoto...
-git remote set-url origin https://github.com/compraventavalledeuco/compraventavalledeuco.git
+git remote set-url origin https://github.com/compraventavalledeuco/compraventavalledeuco-prueba.git
 
 echo.
 echo Agregando archivos principales de la aplicacion...
@@ -111,7 +111,7 @@ git push origin main
 echo.
 echo ========================================
 echo REPOSITORIO ACTUALIZADO EN GITHUB!
-echo URL: https://github.com/compraventavalledeuco/compraventavalledeuco
+echo URL: https://github.com/compraventavalledeuco/compraventavalledeuco-prueba
 echo ========================================
 
 pause

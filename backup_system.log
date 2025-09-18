@@ -1,0 +1,36 @@
+2025-09-15 00:22:22,328 - INFO - Iniciando backup manual: backup_manual_20250915_002222
+2025-09-15 00:22:22,328 - WARNING - Base de datos no encontrada: C:\Users\Diego\Desktop\compraventavalledeuco\backup_system\vehicle_marketplace.db
+2025-09-15 00:22:22,329 - WARNING - Carpeta de uploads no encontrada: C:\Users\Diego\Desktop\compraventavalledeuco\backup_system\static\uploads
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: app.py
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: models.py
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: routes.py
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: requirements.txt
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: pyproject.toml
+2025-09-15 00:22:22,329 - WARNING - Archivo de configuración no encontrado: config_local.py
+2025-09-15 00:22:22,331 - INFO - Archivo de backup creado: backups\backup_manual_20250915_002222.zip
+2025-09-15 00:22:22,331 - INFO - Manifiesto creado: backups\backup_manual_20250915_002222_manifest.json
+2025-09-15 00:22:22,331 - ERROR - Backup manual completado con errores: ['Error en backup de base de datos', 'Error en backup de uploads']
+2025-09-15 00:22:36,139 - INFO - Iniciando backup manual: backup_manual_20250915_002236
+2025-09-15 00:22:36,139 - WARNING - Base de datos no encontrada: C:\Users\Diego\Desktop\compraventavalledeuco\backup_system\vehicle_marketplace.db
+2025-09-15 00:22:36,139 - WARNING - Carpeta de uploads no encontrada: C:\Users\Diego\Desktop\compraventavalledeuco\backup_system\static\uploads
+2025-09-15 00:22:36,139 - WARNING - Archivo de configuración no encontrado: app.py
+2025-09-15 00:22:36,139 - WARNING - Archivo de configuración no encontrado: models.py
+2025-09-15 00:22:36,140 - WARNING - Archivo de configuración no encontrado: routes.py
+2025-09-15 00:22:36,140 - WARNING - Archivo de configuración no encontrado: requirements.txt
+2025-09-15 00:22:36,140 - WARNING - Archivo de configuración no encontrado: pyproject.toml
+2025-09-15 00:22:36,140 - WARNING - Archivo de configuración no encontrado: config_local.py
+2025-09-15 00:22:36,141 - INFO - Archivo de backup creado: backups\backup_manual_20250915_002236.zip
+2025-09-15 00:22:36,141 - INFO - Manifiesto creado: backups\backup_manual_20250915_002236_manifest.json
+2025-09-15 00:22:36,141 - ERROR - Backup manual completado con errores: ['Error en backup de base de datos', 'Error en backup de uploads']
+2025-09-15 00:22:51,959 - INFO - Iniciando backup manual: backup_manual_20250915_002251
+2025-09-15 00:22:51,959 - WARNING - Base de datos no encontrada: C:\Users\Diego\Desktop\compraventavalledeuco\vehicle_marketplace.db
+2025-09-15 00:22:51,992 - INFO - Backup de uploads completado: backups\backup_manual_20250915_002251\uploads_backup
+2025-09-15 00:22:51,993 - INFO - Archivo de configuración respaldado: app.py
+2025-09-15 00:22:51,994 - INFO - Archivo de configuración respaldado: models.py
+2025-09-15 00:22:51,994 - INFO - Archivo de configuración respaldado: routes.py
+2025-09-15 00:22:51,995 - INFO - Archivo de configuración respaldado: requirements.txt
+2025-09-15 00:22:51,996 - INFO - Archivo de configuración respaldado: pyproject.toml
+2025-09-15 00:22:51,996 - WARNING - Archivo de configuración no encontrado: config_local.py
+2025-09-15 00:22:52,214 - INFO - Archivo de backup creado: backups\backup_manual_20250915_002251.zip
+2025-09-15 00:22:52,215 - INFO - Manifiesto creado: backups\backup_manual_20250915_002251_manifest.json
+2025-09-15 00:22:52,215 - ERROR - Backup manual completado con errores: ['Error en backup de base de datos']
