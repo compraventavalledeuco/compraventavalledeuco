@@ -263,51 +263,6 @@
                                     </div>
                                 {% endfor %}
                             </div>
-                        {% else %}
-                            <div class="alert alert-warning text-center">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                Sin información de contacto disponible
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Share Buttons -->
-                    <div class="d-grid gap-2 mb-3">
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <button type="button" class="btn btn-outline-primary w-100" 
-                                        id="sharePublicationBtn"
-                                        data-url="{{ request.url }}"
-                                        data-title="{{ vehicle.title }} - {{ vehicle.format_price_with_currency() }}">
-                                    <i class="fas fa-share me-2"></i>Compartir Publicación
-                                </button>
-                            </div>
-                            {% if seller_vehicle_count > 1 %}
-                            <div class="col-6">
-                                <button type="button" class="btn btn-outline-secondary w-100" 
-                                        id="shareSellerBtn"
-                                        data-seller-keyword="{{ vehicle.seller_keyword or '' }}"
-                                        data-seller-name="{{ seller_name }}">
-                                    <i class="fas fa-user-share me-2"></i>Compartir Vehículos de Vendedor
-                                </button>
-                            </div>
-                            {% else %}
-                            <div class="col-6">
-                                <!-- Botón oculto cuando el vendedor tiene solo 1 vehículo -->
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% if vehicle.seller_keyword %}
-
-                        {% endif %}
-                    </div>
-            </div>
-
-
-            <!-- Safety & Trust Badges -->
-            <div class="card mt-4">
-                <div class="card-body text-center">
-                    <h6 class="fw-bold mb-3">
                         <i class="fas fa-shield-alt text-success me-2"></i>Garantía de Confianza
                     </h6>
                     <div class="row g-2">
