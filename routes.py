@@ -25,7 +25,6 @@ def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 def admin_required(f):
     """Decorador para requerir autenticación de administrador"""
     from functools import wraps
@@ -221,6 +220,16 @@ def index():
                              'km_min': km_min,
                              'km_max': km_max
                          })
+
+@app.route('/version')
+def version():
+    """Expose current deployed version (git SHA) for verification."""
+    try:
+        with open('VERSION', 'r', encoding='utf-8') as f:
+            sha = f.read().strip()
+    except Exception as e:
+        sha = 'unknown'
+    return jsonify({'version': sha})
 
 @app.route('/api/search')
 def api_search():
