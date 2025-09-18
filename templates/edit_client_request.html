@@ -488,13 +488,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateHiddenInputs() {
         hiddenImagesContainer.innerHTML = '';
+        let mainImageIndex = 0;
+        
         images.forEach((imageData, index) => {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = `vehicle_images_data_${index}`;
             input.value = imageData.dataUrl;
             hiddenImagesContainer.appendChild(input);
+            
+            // Check if this is the main image
+            const selectedCard = document.querySelector(`[data-index="${imageData.id}"]`);
+            if (selectedCard) {
+                const badge = selectedCard.querySelector('.main-image-badge');
+                if (badge && !badge.classList.contains('d-none')) {
+                    mainImageIndex = index;
+                }
+            }
         });
+        
+        // Add main image index hidden input
+        const mainIndexInput = document.createElement('input');
+        mainIndexInput.type = 'hidden';
+        mainIndexInput.name = 'main_image_index';
+        mainIndexInput.value = mainImageIndex;
+        hiddenImagesContainer.appendChild(mainIndexInput);
     }
     
     window.removeImage = function(imageId) {

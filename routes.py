@@ -1067,11 +1067,52 @@ def edit_client_request(request_id):
         client_request.color = request.form.get('color', '')
         client_request.admin_notes = request.form.get('admin_notes', '')
         
-        # Handle new uploaded images
+        # Handle new uploaded images (both file uploads and base64 data)
         new_image_urls = []
-        if 'vehicle_images' in request.files:
+        main_image_index = 0
+        
+        # 1) Process hidden base64 inputs from the admin UI
+        image_index = 0
+        while f'vehicle_images_data_{image_index}' in request.form:
+            image_data = request.form[f'vehicle_images_data_{image_index}']
+            if image_data and image_data.startswith('data:image/'):
+                try:
+                    # Extract base64 data
+                    header, data = image_data.split(',', 1)
+                    image_binary = base64.b64decode(data)
+                    
+                    # Determine extension
+                    if 'jpeg' in header or 'jpg' in header:
+                        ext = 'jpg'
+                    elif 'png' in header:
+                        ext = 'png'
+                    elif 'webp' in header:
+                        ext = 'webp'
+                    else:
+                        ext = 'jpg'
+                    
+                    # Unique filename
+                    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    uid = str(uuid.uuid4())[:8]
+                    filename = f"client_edit_{ts}_{uid}.{ext}"
+                    
+                    # Upload to Cloudinary
+                    from io import BytesIO
+                    file_obj = BytesIO(image_binary)
+                    file_obj.name = filename
+                    upload_result = upload_to_cloudinary(file_obj, 'vehicle_images')
+                    if upload_result['success']:
+                        new_image_urls.append(upload_result['url'])
+                    else:
+                        flash(f"Error subiendo imagen {image_index}: {upload_result['error']}", 'error')
+                except Exception as e:
+                    print(f"Error procesando imagen {image_index}: {e}")
+            image_index += 1
+        
+        # 2) Fallback: traditional file uploads if no base64 data
+        if not new_image_urls and 'vehicle_images' in request.files:
             files = request.files.getlist('vehicle_images')
-            if any(file.filename for file in files):  # If new images are uploaded
+            if any(file.filename for file in files):
                 for file in files:
                     if file and file.filename and allowed_file(file.filename):
                         filename = secure_filename(file.filename)
@@ -1084,9 +1125,19 @@ def edit_client_request(request_id):
                             new_image_urls.append(upload_result['url'])
                         else:
                             flash(f'Error uploading image: {upload_result["error"]}', 'error')
-                
-                if new_image_urls:  # Replace images only if new ones were uploaded
-                    client_request.images = json.dumps(new_image_urls)
+        
+        # 3) Get main image index from form
+        try:
+            main_image_index = int(request.form.get('main_image_index', 0))
+            if main_image_index < 0 or (new_image_urls and main_image_index >= len(new_image_urls)):
+                main_image_index = 0
+        except (ValueError, TypeError):
+            main_image_index = 0
+        
+        # 4) Update images if new ones were uploaded
+        if new_image_urls:
+            client_request.images = json.dumps(new_image_urls)
+            client_request.main_image_index = main_image_index
         
         # Also update the associated vehicle if it exists
         vehicle = Vehicle.query.filter_by(client_request_id=request_id).first()
@@ -1116,6 +1167,7 @@ def edit_client_request(request_id):
             # Update images if new ones were uploaded
             if new_image_urls:
                 vehicle.images = json.dumps(new_image_urls)
+                vehicle.main_image_index = main_image_index
             print(f"DEBUG: Vehicle updated - Title: {vehicle.title}, Price: {vehicle.price}")
         else:
             print(f"DEBUG: No vehicle found for client_request_id {request_id}")
