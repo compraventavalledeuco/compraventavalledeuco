@@ -656,11 +656,47 @@ def delete_vehicle(id):
     
     vehicle = Vehicle.query.get_or_404(id)
     
-    # Delete associated images from filesystem
+    # Delete associated images from Cloudinary and filesystem
     if vehicle.images:
         image_urls = json.loads(vehicle.images)
         for image_url in image_urls:
-            if image_url.startswith('uploads/'):
+            # Delete from Cloudinary if it's a Cloudinary URL
+            if 'cloudinary.com' in image_url or 'res.cloudinary.com' in image_url:
+                try:
+                    # Extract public_id from Cloudinary URL
+                    # URL format: https://res.cloudinary.com/cloud_name/image/upload/v123456/folder/public_id.ext
+                    url_parts = image_url.split('/')
+                    if len(url_parts) >= 2:
+                        # Find the part after 'upload' or 'upload/v123456'
+                        upload_index = -1
+                        for i, part in enumerate(url_parts):
+                            if part == 'upload':
+                                upload_index = i
+                                break
+                        
+                        if upload_index != -1:
+                            # Get everything after upload (skip version if present)
+                            remaining_parts = url_parts[upload_index + 1:]
+                            if remaining_parts and remaining_parts[0].startswith('v'):
+                                # Skip version number
+                                remaining_parts = remaining_parts[1:]
+                            
+                            if remaining_parts:
+                                # Join the remaining parts and remove file extension
+                                public_id = '/'.join(remaining_parts)
+                                public_id = os.path.splitext(public_id)[0]  # Remove extension
+                                
+                                print(f"🗑️ Deleting Cloudinary image: {public_id}")
+                                success = delete_from_cloudinary(public_id)
+                                if success:
+                                    print(f"✅ Successfully deleted from Cloudinary: {public_id}")
+                                else:
+                                    print(f"❌ Failed to delete from Cloudinary: {public_id}")
+                except Exception as e:
+                    print(f"❌ Error deleting Cloudinary image {image_url}: {e}")
+            
+            # Also try to delete from local filesystem (legacy support)
+            elif image_url.startswith('uploads/'):
                 image_path = os.path.join('static', image_url)
                 if os.path.exists(image_path):
                     try:
@@ -1215,18 +1251,64 @@ def delete_vehicle_ajax(vehicle_id):
     try:
         vehicle = Vehicle.query.get_or_404(vehicle_id)
         
-        # Delete associated images from filesystem
+        # Delete associated images from Cloudinary and filesystem
         import os
         upload_folder = app.config['UPLOAD_FOLDER']
         
         if vehicle.images:
-            for image_path in vehicle.images:
-                full_path = os.path.join(upload_folder, image_path)
-                if os.path.exists(full_path):
+            # Handle both JSON string and list formats
+            if isinstance(vehicle.images, str):
+                try:
+                    image_urls = json.loads(vehicle.images)
+                except:
+                    image_urls = [vehicle.images]  # Single image as string
+            else:
+                image_urls = vehicle.images if isinstance(vehicle.images, list) else []
+            
+            for image_url in image_urls:
+                # Delete from Cloudinary if it's a Cloudinary URL
+                if isinstance(image_url, str) and ('cloudinary.com' in image_url or 'res.cloudinary.com' in image_url):
                     try:
-                        os.remove(full_path)
-                    except OSError as e:
-                        print(f"Error deleting image {full_path}: {e}")
+                        # Extract public_id from Cloudinary URL
+                        url_parts = image_url.split('/')
+                        if len(url_parts) >= 2:
+                            # Find the part after 'upload'
+                            upload_index = -1
+                            for i, part in enumerate(url_parts):
+                                if part == 'upload':
+                                    upload_index = i
+                                    break
+                            
+                            if upload_index != -1:
+                                # Get everything after upload (skip version if present)
+                                remaining_parts = url_parts[upload_index + 1:]
+                                if remaining_parts and remaining_parts[0].startswith('v'):
+                                    # Skip version number
+                                    remaining_parts = remaining_parts[1:]
+                                
+                                if remaining_parts:
+                                    # Join the remaining parts and remove file extension
+                                    public_id = '/'.join(remaining_parts)
+                                    public_id = os.path.splitext(public_id)[0]  # Remove extension
+                                    
+                                    print(f"🗑️ Deleting Cloudinary image: {public_id}")
+                                    success = delete_from_cloudinary(public_id)
+                                    if success:
+                                        print(f"✅ Successfully deleted from Cloudinary: {public_id}")
+                                    else:
+                                        print(f"❌ Failed to delete from Cloudinary: {public_id}")
+                    except Exception as e:
+                        print(f"❌ Error deleting Cloudinary image {image_url}: {e}")
+                
+                # Also try to delete from local filesystem (legacy support)
+                elif isinstance(image_url, str) and not image_url.startswith('http'):
+                    full_path = os.path.join(upload_folder, image_url)
+                    if os.path.exists(full_path):
+                        try:
+                            os.remove(full_path)
+                            print(f"🗑️ Deleted local image: {full_path}")
+                        except OSError as e:
+                            print(f"❌ Error deleting local image {full_path}: {e}")
         
         # Delete related VehicleView records first
         VehicleView.query.filter_by(vehicle_id=vehicle_id).delete()
