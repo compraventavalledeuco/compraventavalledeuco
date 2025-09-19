@@ -3,7 +3,7 @@ import json
 import hashlib
 import secrets
 import logging
-from flask import render_template, request, redirect, url_for, session, flash, jsonify, make_response
+from flask import render_template, request, redirect, url_for, session, flash, jsonify, make_response, send_file
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -2158,18 +2158,35 @@ def admin_download_backup(backup_file):
         return redirect(url_for('panel_login'))
     
     try:
+        import logging
+        logging.info(f"Intentando descargar backup: {backup_file}")
+        
         # Validate backup file path for security
         if not backup_file or '..' in backup_file:
             flash('Archivo de backup inválido', 'error')
+            logging.error(f"Ruta de backup inválida: {backup_file}")
             return redirect(url_for('admin_backup_dashboard'))
         
         # Check if file exists
         if not os.path.exists(backup_file):
-            flash('Archivo de backup no encontrado', 'error')
+            # Log información adicional para debugging
+            logging.error(f"Archivo de backup no encontrado: {backup_file}")
+            logging.info(f"Directorio actual: {os.getcwd()}")
+            
+            # Listar archivos en el directorio de backups para debugging
+            backup_dir = os.path.dirname(backup_file)
+            if os.path.exists(backup_dir):
+                files_in_dir = os.listdir(backup_dir)
+                logging.info(f"Archivos en {backup_dir}: {files_in_dir}")
+            else:
+                logging.error(f"Directorio de backup no existe: {backup_dir}")
+            
+            flash('Archivo de backup no encontrado. En Heroku, los backups pueden no persistir debido al sistema de archivos efímero.', 'error')
             return redirect(url_for('admin_backup_dashboard'))
         
         # Get filename for download
         filename = os.path.basename(backup_file)
+        logging.info(f"Enviando archivo: {filename}")
         
         # Send file
         return send_file(
@@ -2179,9 +2196,15 @@ def admin_download_backup(backup_file):
             mimetype='application/zip'
         )
         
+    except NameError as e:
+        logging.error(f"Error de importación: {str(e)}")
+        flash(f'Error de configuración: {str(e)}', 'error')
+        return redirect(url_for('admin_backup_dashboard'))
     except Exception as e:
+        logging.error(f"Error al descargar backup: {str(e)}")
         flash(f'Error al descargar backup: {str(e)}', 'error')
         return redirect(url_for('admin_backup_dashboard'))
+
 
 # Error handlers
 @app.errorhandler(404)
