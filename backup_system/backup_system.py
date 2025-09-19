@@ -111,12 +111,19 @@ class BackupManager:
             return None
     
     def backup_database(self, backup_path):
-        """Realiza backup de la base de datos SQLite"""
+        """Realiza backup de la base de datos (SQLite si existe)"""
         db_path = Path(self.config['project_path']) / self.config['database_file']
         
         if not db_path.exists():
-            logging.warning(f"Base de datos no encontrada: {db_path}")
-            return False
+            logging.info(f"Base de datos SQLite no encontrada: {db_path} - Probablemente usando PostgreSQL")
+            # Crear un archivo de información sobre la base de datos
+            db_info_path = backup_path / "database_info.txt"
+            with open(db_info_path, 'w', encoding='utf-8') as f:
+                f.write(f"Base de datos: No se encontró archivo SQLite local\n")
+                f.write(f"Ruta buscada: {db_path}\n")
+                f.write(f"Probablemente usando PostgreSQL remoto\n")
+                f.write(f"Los datos se respaldan desde la aplicación directamente\n")
+            return True
             
         try:
             # Crear backup usando SQLite backup API (más seguro que copiar archivo)
@@ -137,7 +144,7 @@ class BackupManager:
             
             # Verificar integridad del backup
             if self.verify_database_integrity(backup_db_path):
-                logging.info(f"Backup de base de datos completado: {backup_db_path}")
+                logging.info(f"Backup de base de datos SQLite completado: {backup_db_path}")
                 return True
             else:
                 logging.error("Error en la verificación de integridad del backup de base de datos")
@@ -160,43 +167,169 @@ class BackupManager:
             logging.error(f"Error verificando integridad de {db_path}: {e}")
             return False
     
-    def backup_uploads(self, backup_path):
-        """Realiza backup de las imágenes y archivos subidos"""
-        uploads_path = Path(self.config['project_path']) / self.config['uploads_dir']
-        
-        if not uploads_path.exists():
-            logging.warning(f"Carpeta de uploads no encontrada: {uploads_path}")
-            return False
-            
+    def backup_data_only(self, backup_path):
+        """Realiza backup solo de los datos (URLs de imágenes, no archivos físicos)"""
         try:
-            backup_uploads_path = backup_path / "uploads_backup"
-            backup_uploads_path.mkdir(exist_ok=True)
+            data_backup_path = backup_path / "data_backup"
+            data_backup_path.mkdir(exist_ok=True)
             
-            # Copiar toda la carpeta de uploads
-            shutil.copytree(uploads_path, backup_uploads_path / "uploads", dirs_exist_ok=True)
+            # Exportar datos de todas las tablas importantes
+            from app import app
+            from models import Vehicle, ClientRequest, Admin, Click, VehicleView, PageVisit, Gestor
             
-            # Crear archivo de inventario con hashes
-            inventory = {}
-            for file_path in uploads_path.rglob('*'):
-                if file_path.is_file():
-                    relative_path = file_path.relative_to(uploads_path)
-                    file_hash = self.calculate_file_hash(file_path)
-                    inventory[str(relative_path)] = {
-                        'size': file_path.stat().st_size,
-                        'modified': file_path.stat().st_mtime,
-                        'hash': file_hash
+            with app.app_context():
+                # Backup de vehículos (con URLs de imágenes)
+                vehicles_data = []
+                vehicles = Vehicle.query.all()
+                for vehicle in vehicles:
+                    vehicle_data = {
+                        'id': vehicle.id,
+                        'title': vehicle.title,
+                        'description': vehicle.description,
+                        'price': vehicle.price,
+                        'currency': vehicle.currency,
+                        'year': vehicle.year,
+                        'brand': vehicle.brand,
+                        'model': vehicle.model,
+                        'kilometers': vehicle.kilometers,
+                        'fuel_type': vehicle.fuel_type,
+                        'transmission': vehicle.transmission,
+                        'color': vehicle.color,
+                        'images': vehicle.images,  # JSON string con URLs
+                        'main_image_index': vehicle.main_image_index,
+                        'whatsapp_number': vehicle.whatsapp_number,
+                        'call_number': vehicle.call_number,
+                        'contact_type': vehicle.contact_type,
+                        'phone_number': vehicle.phone_number,
+                        'is_active': vehicle.is_active,
+                        'is_plus': vehicle.is_plus,
+                        'premium_duration_months': vehicle.premium_duration_months,
+                        'premium_expires_at': vehicle.premium_expires_at.isoformat() if vehicle.premium_expires_at else None,
+                        'created_at': vehicle.created_at.isoformat(),
+                        'updated_at': vehicle.updated_at.isoformat(),
+                        'location': vehicle.location,
+                        'tire_condition': vehicle.tire_condition,
+                        'seller_keyword': vehicle.seller_keyword,
+                        'client_request_id': vehicle.client_request_id,
+                        'full_name': getattr(vehicle, 'full_name', None),
+                        'dni': getattr(vehicle, 'dni', None),
+                        'email': getattr(vehicle, 'email', None),
+                        'address': getattr(vehicle, 'address', None),
+                        'doors': getattr(vehicle, 'doors', None),
+                        'engine': getattr(vehicle, 'engine', None),
+                        'condition': getattr(vehicle, 'condition', None),
+                        'plan': getattr(vehicle, 'plan', None),
+                        'mileage': getattr(vehicle, 'mileage', None)
                     }
+                    vehicles_data.append(vehicle_data)
+                
+                # Backup de solicitudes de clientes
+                requests_data = []
+                requests = ClientRequest.query.all()
+                for request in requests:
+                    request_data = {
+                        'id': request.id,
+                        'full_name': request.full_name,
+                        'dni': request.dni,
+                        'whatsapp_number': request.whatsapp_number,
+                        'call_number': request.call_number,
+                        'phone_number': request.phone_number,
+                        'location': request.location,
+                        'address': request.address,
+                        'seller_keyword': request.seller_keyword,
+                        'title': request.title,
+                        'description': request.description,
+                        'price': request.price,
+                        'currency': request.currency,
+                        'year': request.year,
+                        'brand': request.brand,
+                        'model': request.model,
+                        'kilometers': request.kilometers,
+                        'fuel_type': request.fuel_type,
+                        'transmission': request.transmission,
+                        'color': request.color,
+                        'images': request.images,  # JSON string con URLs
+                        'main_image_index': request.main_image_index,
+                        'publication_type': request.publication_type,
+                        'status': request.status,
+                        'admin_notes': request.admin_notes,
+                        'created_at': request.created_at.isoformat(),
+                        'updated_at': request.updated_at.isoformat(),
+                        'processed_at': request.processed_at.isoformat() if request.processed_at else None,
+                        'processed_by_admin_id': request.processed_by_admin_id
+                    }
+                    requests_data.append(request_data)
+                
+                # Backup de administradores
+                admins_data = []
+                admins = Admin.query.all()
+                for admin in admins:
+                    admin_data = {
+                        'id': admin.id,
+                        'username': admin.username,
+                        'password_hash': admin.password_hash
+                    }
+                    admins_data.append(admin_data)
+                
+                # Backup de gestores
+                gestores_data = []
+                gestores = Gestor.query.all()
+                for gestor in gestores:
+                    gestor_data = {
+                        'id': gestor.id,
+                        'name': gestor.name,
+                        'business_name': gestor.business_name,
+                        'phone_number': gestor.phone_number,
+                        'whatsapp_number': gestor.whatsapp_number,
+                        'email': gestor.email,
+                        'address': gestor.address,
+                        'location': gestor.location,
+                        'specializations': gestor.specializations,
+                        'years_experience': gestor.years_experience,
+                        'description': gestor.description,
+                        'image_filename': gestor.image_filename,
+                        'is_active': gestor.is_active,
+                        'is_featured': gestor.is_featured,
+                        'created_at': gestor.created_at.isoformat(),
+                        'updated_at': gestor.updated_at.isoformat()
+                    }
+                    gestores_data.append(gestor_data)
             
-            # Guardar inventario
-            inventory_file = backup_uploads_path / "inventory.json"
-            with open(inventory_file, 'w', encoding='utf-8') as f:
-                json.dump(inventory, f, indent=2, ensure_ascii=False)
+            # Guardar todos los datos en archivos JSON
+            with open(data_backup_path / "vehicles.json", 'w', encoding='utf-8') as f:
+                json.dump(vehicles_data, f, indent=2, ensure_ascii=False)
             
-            logging.info(f"Backup de uploads completado: {backup_uploads_path}")
+            with open(data_backup_path / "client_requests.json", 'w', encoding='utf-8') as f:
+                json.dump(requests_data, f, indent=2, ensure_ascii=False)
+            
+            with open(data_backup_path / "admins.json", 'w', encoding='utf-8') as f:
+                json.dump(admins_data, f, indent=2, ensure_ascii=False)
+            
+            with open(data_backup_path / "gestores.json", 'w', encoding='utf-8') as f:
+                json.dump(gestores_data, f, indent=2, ensure_ascii=False)
+            
+            # Crear resumen del backup
+            summary = {
+                'backup_date': datetime.datetime.now().isoformat(),
+                'vehicles_count': len(vehicles_data),
+                'requests_count': len(requests_data),
+                'admins_count': len(admins_data),
+                'gestores_count': len(gestores_data),
+                'backup_type': 'data_only',
+                'note': 'Este backup contiene solo datos (URLs de imágenes, no archivos físicos)'
+            }
+            
+            with open(data_backup_path / "backup_summary.json", 'w', encoding='utf-8') as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+            
+            logging.info(f"Backup de datos completado: {data_backup_path}")
+            logging.info(f"Vehículos: {len(vehicles_data)}, Solicitudes: {len(requests_data)}, Admins: {len(admins_data)}, Gestores: {len(gestores_data)}")
             return True
             
         except Exception as e:
-            logging.error(f"Error en backup de uploads: {e}")
+            logging.error(f"Error en backup de datos: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def backup_config_files(self, backup_path):
@@ -313,9 +446,9 @@ class BackupManager:
                 backup_info['errors'].append("Error en backup de base de datos")
                 backup_info['success'] = False
             
-            # Backup de uploads
-            if not self.backup_uploads(backup_path):
-                backup_info['errors'].append("Error en backup de uploads")
+            # Backup de datos (solo URLs, no archivos físicos)
+            if not self.backup_data_only(backup_path):
+                backup_info['errors'].append("Error en backup de datos")
                 backup_info['success'] = False
             
             # Backup de archivos de configuración
@@ -335,8 +468,10 @@ class BackupManager:
             # Crear manifiesto
             self.create_backup_manifest(backup_info)
             
+            # Limpiar backups antiguos después de crear uno nuevo
             if backup_info['success']:
                 logging.info(f"Backup {backup_type} completado exitosamente: {backup_name}")
+                self.cleanup_old_backups(5)  # Mantener máximo 5 backups
             else:
                 logging.error(f"Backup {backup_type} completado con errores: {backup_info['errors']}")
             
@@ -349,7 +484,7 @@ class BackupManager:
             return backup_info
     
     def restore_backup(self, backup_file):
-        """Restaura un backup desde archivo"""
+        """Restaura un backup desde archivo (nuevo formato JSON)"""
         try:
             backup_path = Path(backup_file)
             if not backup_path.exists():
@@ -376,57 +511,15 @@ class BackupManager:
                 with zipfile.ZipFile(backup_path, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
                 
-                # Buscar el archivo de base de datos en el backup
-                db_backup_path = None
-                for root, dirs, files in os.walk(temp_dir):
-                    for file in files:
-                        if file.endswith('.db') or file == self.config['database_file']:
-                            db_backup_path = Path(root) / file
-                            break
-                    if db_backup_path:
-                        break
+                # Buscar el directorio de datos
+                data_backup_path = temp_dir / 'data_backup'
                 
-                if not db_backup_path or not db_backup_path.exists():
-                    return {
-                        'success': False,
-                        'error': 'No se encontró archivo de base de datos en el backup'
-                    }
-                
-                # Ruta de la base de datos actual
-                current_db_path = Path(self.config['project_path']) / self.config['database_file']
-                
-                # Hacer backup de la base de datos actual antes de restaurar
-                if current_db_path.exists():
-                    backup_current = current_db_path.parent / f"{current_db_path.stem}_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-                    shutil.copy2(current_db_path, backup_current)
-                    logging.info(f"Backup de seguridad creado: {backup_current}")
-                
-                # Restaurar la base de datos
-                shutil.copy2(db_backup_path, current_db_path)
-                logging.info(f"Base de datos restaurada desde: {db_backup_path}")
-                
-                # Restaurar archivos de uploads si existen en el backup
-                uploads_backup_path = temp_dir / 'static' / 'uploads'
-                if uploads_backup_path.exists():
-                    uploads_current_path = Path(self.config['project_path']) / self.config['uploads_dir']
-                    
-                    # Hacer backup de uploads actuales
-                    if uploads_current_path.exists():
-                        uploads_backup = uploads_current_path.parent / f"uploads_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                        shutil.copytree(uploads_current_path, uploads_backup)
-                        logging.info(f"Backup de uploads creado: {uploads_backup}")
-                        
-                        # Limpiar directorio actual
-                        shutil.rmtree(uploads_current_path)
-                    
-                    # Restaurar uploads
-                    shutil.copytree(uploads_backup_path, uploads_current_path)
-                    logging.info(f"Archivos de uploads restaurados")
-                
-                return {
-                    'success': True,
-                    'message': f'Backup restaurado exitosamente desde {backup_path.name}'
-                }
+                if data_backup_path.exists():
+                    # Nuevo formato: restaurar desde archivos JSON
+                    return self._restore_from_json_data(data_backup_path)
+                else:
+                    # Formato antiguo: buscar base de datos SQLite
+                    return self._restore_from_legacy_format(temp_dir)
                 
             finally:
                 # Limpiar directorio temporal
@@ -434,38 +527,249 @@ class BackupManager:
             
         except Exception as e:
             logging.error(f"Error durante la restauración: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 'success': False,
                 'error': str(e)
             }
-
-    def cleanup_old_backups(self):
-        """Elimina backups antiguos según la política de retención"""
-        retention_days = self.config['retention_days']
-        cutoff_date = datetime.datetime.now() - datetime.timedelta(days=retention_days)
-        
-        for backup_dir in [self.daily_dir, self.weekly_dir, self.monthly_dir]:
-            try:
-                for item in backup_dir.iterdir():
-                    if item.is_file() and item.suffix == '.zip':
-                        # Extraer fecha del nombre del archivo
+    
+    def _restore_from_json_data(self, data_backup_path):
+        """Restaura datos desde archivos JSON"""
+        try:
+            from app import app
+            from models import db, Vehicle, ClientRequest, Admin, Gestor
+            
+            with app.app_context():
+                # Crear backup de seguridad de la base de datos actual
+                current_db_path = Path(self.config['project_path']) / self.config['database_file']
+                if current_db_path.exists():
+                    backup_current = current_db_path.parent / f"{current_db_path.stem}_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                    shutil.copy2(current_db_path, backup_current)
+                    logging.info(f"Backup de seguridad creado: {backup_current}")
+                
+                # Leer archivos JSON
+                vehicles_file = data_backup_path / 'vehicles.json'
+                requests_file = data_backup_path / 'client_requests.json'
+                admins_file = data_backup_path / 'admins.json'
+                gestores_file = data_backup_path / 'gestores.json'
+                summary_file = data_backup_path / 'backup_summary.json'
+                
+                # Leer resumen del backup
+                if summary_file.exists():
+                    with open(summary_file, 'r', encoding='utf-8') as f:
+                        summary = json.load(f)
+                        logging.info(f"Restaurando backup del {summary.get('backup_date', 'fecha desconocida')}")
+                        logging.info(f"Tipo: {summary.get('backup_type', 'desconocido')}")
+                
+                # Limpiar tablas existentes (excepto admins por seguridad)
+                logging.info("Limpiando datos existentes...")
+                db.session.query(Vehicle).delete()
+                db.session.query(ClientRequest).delete()
+                db.session.query(Gestor).delete()
+                db.session.commit()
+                
+                restored_counts = {'vehicles': 0, 'requests': 0, 'admins': 0, 'gestores': 0}
+                
+                # Restaurar vehículos
+                if vehicles_file.exists():
+                    with open(vehicles_file, 'r', encoding='utf-8') as f:
+                        vehicles_data = json.load(f)
+                        
+                    for vehicle_data in vehicles_data:
                         try:
-                            date_str = item.stem.split('_')[-2] + '_' + item.stem.split('_')[-1]
-                            file_date = datetime.datetime.strptime(date_str, '%Y%m%d_%H%M%S')
+                            # Convertir fechas de string a datetime
+                            if vehicle_data.get('premium_expires_at'):
+                                vehicle_data['premium_expires_at'] = datetime.datetime.fromisoformat(vehicle_data['premium_expires_at'])
+                            if vehicle_data.get('created_at'):
+                                vehicle_data['created_at'] = datetime.datetime.fromisoformat(vehicle_data['created_at'])
+                            if vehicle_data.get('updated_at'):
+                                vehicle_data['updated_at'] = datetime.datetime.fromisoformat(vehicle_data['updated_at'])
                             
-                            if file_date < cutoff_date:
-                                item.unlink()
-                                # Eliminar manifiesto asociado
-                                manifest_file = item.parent / f"{item.stem}_manifest.json"
-                                if manifest_file.exists():
-                                    manifest_file.unlink()
-                                logging.info(f"Backup antiguo eliminado: {item}")
-                                
-                        except (ValueError, IndexError):
-                            logging.warning(f"No se pudo parsear fecha del archivo: {item}")
+                            # Crear nuevo vehículo
+                            vehicle = Vehicle(**vehicle_data)
+                            db.session.add(vehicle)
+                            restored_counts['vehicles'] += 1
+                        except Exception as e:
+                            logging.error(f"Error restaurando vehículo {vehicle_data.get('id', 'desconocido')}: {e}")
+                
+                # Restaurar solicitudes de clientes
+                if requests_file.exists():
+                    with open(requests_file, 'r', encoding='utf-8') as f:
+                        requests_data = json.load(f)
+                        
+                    for request_data in requests_data:
+                        try:
+                            # Convertir fechas de string a datetime
+                            if request_data.get('created_at'):
+                                request_data['created_at'] = datetime.datetime.fromisoformat(request_data['created_at'])
+                            if request_data.get('updated_at'):
+                                request_data['updated_at'] = datetime.datetime.fromisoformat(request_data['updated_at'])
+                            if request_data.get('processed_at'):
+                                request_data['processed_at'] = datetime.datetime.fromisoformat(request_data['processed_at'])
                             
-            except Exception as e:
-                logging.error(f"Error limpiando backups antiguos en {backup_dir}: {e}")
+                            # Crear nueva solicitud
+                            request = ClientRequest(**request_data)
+                            db.session.add(request)
+                            restored_counts['requests'] += 1
+                        except Exception as e:
+                            logging.error(f"Error restaurando solicitud {request_data.get('id', 'desconocida')}: {e}")
+                
+                # Restaurar gestores
+                if gestores_file.exists():
+                    with open(gestores_file, 'r', encoding='utf-8') as f:
+                        gestores_data = json.load(f)
+                        
+                    for gestor_data in gestores_data:
+                        try:
+                            # Convertir fechas de string a datetime
+                            if gestor_data.get('created_at'):
+                                gestor_data['created_at'] = datetime.datetime.fromisoformat(gestor_data['created_at'])
+                            if gestor_data.get('updated_at'):
+                                gestor_data['updated_at'] = datetime.datetime.fromisoformat(gestor_data['updated_at'])
+                            
+                            # Crear nuevo gestor
+                            gestor = Gestor(**gestor_data)
+                            db.session.add(gestor)
+                            restored_counts['gestores'] += 1
+                        except Exception as e:
+                            logging.error(f"Error restaurando gestor {gestor_data.get('id', 'desconocido')}: {e}")
+                
+                # Restaurar administradores (solo si no existen)
+                if admins_file.exists():
+                    with open(admins_file, 'r', encoding='utf-8') as f:
+                        admins_data = json.load(f)
+                        
+                    for admin_data in admins_data:
+                        try:
+                            # Verificar si el admin ya existe
+                            existing_admin = Admin.query.filter_by(username=admin_data['username']).first()
+                            if not existing_admin:
+                                admin = Admin(**admin_data)
+                                db.session.add(admin)
+                                restored_counts['admins'] += 1
+                            else:
+                                logging.info(f"Admin {admin_data['username']} ya existe, omitiendo")
+                        except Exception as e:
+                            logging.error(f"Error restaurando admin {admin_data.get('username', 'desconocido')}: {e}")
+                
+                # Confirmar cambios
+                db.session.commit()
+                
+                logging.info(f"Restauración completada:")
+                logging.info(f"- Vehículos: {restored_counts['vehicles']}")
+                logging.info(f"- Solicitudes: {restored_counts['requests']}")
+                logging.info(f"- Gestores: {restored_counts['gestores']}")
+                logging.info(f"- Administradores: {restored_counts['admins']}")
+                
+                return {
+                    'success': True,
+                    'message': f'Backup restaurado exitosamente. Vehículos: {restored_counts["vehicles"]}, Solicitudes: {restored_counts["requests"]}, Gestores: {restored_counts["gestores"]}, Admins: {restored_counts["admins"]}',
+                    'restored_counts': restored_counts
+                }
+                
+        except Exception as e:
+            logging.error(f"Error restaurando desde JSON: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'success': False,
+                'error': f'Error restaurando datos: {str(e)}'
+            }
+    
+    def _restore_from_legacy_format(self, temp_dir):
+        """Restaura desde formato antiguo (base de datos SQLite)"""
+        try:
+            # Buscar el archivo de base de datos en el backup
+            db_backup_path = None
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    if file.endswith('.db') or file == self.config['database_file']:
+                        db_backup_path = Path(root) / file
+                        break
+                if db_backup_path:
+                    break
+            
+            if not db_backup_path or not db_backup_path.exists():
+                return {
+                    'success': False,
+                    'error': 'No se encontró archivo de base de datos en el backup'
+                }
+            
+            # Ruta de la base de datos actual
+            current_db_path = Path(self.config['project_path']) / self.config['database_file']
+            
+            # Hacer backup de la base de datos actual antes de restaurar
+            if current_db_path.exists():
+                backup_current = current_db_path.parent / f"{current_db_path.stem}_backup_before_restore_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                shutil.copy2(current_db_path, backup_current)
+                logging.info(f"Backup de seguridad creado: {backup_current}")
+            
+            # Restaurar la base de datos
+            shutil.copy2(db_backup_path, current_db_path)
+            logging.info(f"Base de datos restaurada desde: {db_backup_path}")
+            
+            return {
+                'success': True,
+                'message': f'Backup legacy restaurado exitosamente'
+            }
+            
+        except Exception as e:
+            logging.error(f"Error restaurando formato legacy: {e}")
+            return {
+                'success': False,
+                'error': f'Error restaurando backup legacy: {str(e)}'
+            }
+
+    def cleanup_old_backups(self, max_backups=5):
+        """Elimina backups antiguos manteniendo solo los más recientes (máximo 5)"""
+        try:
+            # Recopilar todos los backups de todos los directorios
+            all_backups = []
+            
+            for backup_dir in [self.daily_dir, self.weekly_dir, self.monthly_dir, self.backup_dir]:
+                if backup_dir.exists():
+                    for item in backup_dir.iterdir():
+                        if item.is_file() and item.suffix == '.zip':
+                            try:
+                                # Extraer fecha del nombre del archivo
+                                date_str = item.stem.split('_')[-2] + '_' + item.stem.split('_')[-1]
+                                file_date = datetime.datetime.strptime(date_str, '%Y%m%d_%H%M%S')
+                                all_backups.append({
+                                    'file': item,
+                                    'date': file_date,
+                                    'manifest': item.parent / f"{item.stem}_manifest.json"
+                                })
+                            except (ValueError, IndexError):
+                                logging.warning(f"No se pudo parsear fecha del archivo: {item}")
+            
+            # Ordenar por fecha (más recientes primero)
+            all_backups.sort(key=lambda x: x['date'], reverse=True)
+            
+            # Eliminar backups que excedan el límite
+            if len(all_backups) > max_backups:
+                backups_to_delete = all_backups[max_backups:]
+                
+                for backup_info in backups_to_delete:
+                    try:
+                        # Eliminar archivo de backup
+                        backup_info['file'].unlink()
+                        logging.info(f"Backup eliminado: {backup_info['file']}")
+                        
+                        # Eliminar manifiesto asociado si existe
+                        if backup_info['manifest'].exists():
+                            backup_info['manifest'].unlink()
+                            logging.info(f"Manifiesto eliminado: {backup_info['manifest']}")
+                            
+                    except Exception as e:
+                        logging.error(f"Error eliminando backup {backup_info['file']}: {e}")
+                
+                logging.info(f"Limpieza completada. Mantenidos {max_backups} backups más recientes, eliminados {len(backups_to_delete)}")
+            else:
+                logging.info(f"No es necesaria limpieza. Backups actuales: {len(all_backups)}, límite: {max_backups}")
+                
+        except Exception as e:
+            logging.error(f"Error durante limpieza de backups: {e}")
     
     def schedule_backups(self):
         """Programa los backups automáticos"""
@@ -480,8 +784,8 @@ class BackupManager:
         # Backup mensual (primer día del mes)
         schedule.every().month.do(self.perform_backup, 'monthly')
         
-        # Limpieza de backups antiguos (diaria)
-        schedule.every().day.at("03:00").do(self.cleanup_old_backups)
+        # Limpieza de backups antiguos (diaria) - mantener máximo 5
+        schedule.every().day.at("03:00").do(self.cleanup_old_backups, 5)
         
         logging.info("Backups programados:")
         logging.info(f"- Diario: {daily_time}")
