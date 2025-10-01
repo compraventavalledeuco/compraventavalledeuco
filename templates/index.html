@@ -159,10 +159,13 @@
                 </div>
                 <div class="col-md-2">
                     <select class="form-select" name="location" id="locationFilter">
-                        <option value="">Todo el Valle</option>
+                        <option value="">Todo Mendoza</option>
                         <option value="Tupungato" {% if current_filters.location == 'Tupungato' %}selected{% endif %}>Tupungato</option>
                         <option value="Tunuyán" {% if current_filters.location == 'Tunuyán' %}selected{% endif %}>Tunuyán</option>
                         <option value="San Carlos" {% if current_filters.location == 'San Carlos' %}selected{% endif %}>San Carlos</option>
+                        <option value="San Rafael" {% if current_filters.location == 'San Rafael' %}selected{% endif %}>San Rafael</option>
+                        <option value="Malargüe" {% if current_filters.location == 'Malargüe' %}selected{% endif %}>Malargüe</option>
+                        <option value="General Alvear" {% if current_filters.location == 'General Alvear' %}selected{% endif %}>General Alvear</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -338,10 +341,15 @@
                                     <i class="fas fa-star me-1"></i>Plus
                                 </div>
                                 
-                                <!-- Department badge -->
+                                <!-- Department and sub-location badges -->
                                 <div class="vehicle-department-badge {{ vehicle.get_location().lower().replace(' ', '-') }}">
                                     <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
                                 </div>
+                                {% if vehicle.get_sub_location() %}
+                                <div class="sub-location-badge">
+                                    <i class="fas fa-thumbtack me-1"></i>{{ vehicle.get_sub_location() }}
+                                </div>
+                                {% endif %}
                             </div>
                             {% else %}
                             <!-- Plus publication without image -->
@@ -442,10 +450,15 @@
                                     <i class="fas fa-gift me-1"></i>Publicación Gratuita
                                 </div>
                                 
-                                <!-- Department badge for free publications -->
+                                <!-- Department and sub-location badges for free publications -->
                                 <div class="vehicle-department-badge {{ vehicle.get_location().lower().replace(' ', '-') }}" style="position: absolute; top: 10px; right: 10px;">
                                     <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
                                 </div>
+                                {% if vehicle.get_sub_location() %}
+                                <div class="sub-location-badge" style="position: absolute; top: 45px; right: 10px;">
+                                    <i class="fas fa-thumbtack me-1"></i>{{ vehicle.get_sub_location() }}
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <div class="card-body p-4">

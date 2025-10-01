@@ -134,9 +134,9 @@ def index():
     if year_max is not None:
         query = query.filter(Vehicle.year <= year_max)
     
-    # Apply location filter (assuming location is stored in a field)
+    # Apply location filter by department stored in Vehicle.location
     if location:
-        query = query.filter(Vehicle.title.ilike(f"%{location}%"))
+        query = query.filter(Vehicle.location.ilike(f"%{location}%"))
     
     # Apply fuel type filter
     if fuel_type:
@@ -516,6 +516,7 @@ def edit_vehicle(id):
         vehicle.engine = request.form.get('engine', '')
         vehicle.condition = request.form.get('condition', '')
         vehicle.location = request.form.get('location', '')
+        vehicle.sub_location = request.form.get('sub_location', '')
         vehicle.phone_number = request.form.get('phone_number', '')
         vehicle.whatsapp_number = request.form.get('whatsapp_number', '')
         vehicle.plan = request.form.get('plan', '')
@@ -525,6 +526,7 @@ def edit_vehicle(id):
         vehicle.dni = request.form.get('user_dni', '')
         vehicle.email = request.form.get('user_email', '')
         vehicle.location = request.form.get('user_location', '')
+        vehicle.sub_location = request.form.get('user_sub_location', vehicle.sub_location or '')
         vehicle.address = request.form.get('user_address', '')
         
         # Handle image uploads with Cloudinary (Admin UI uses hidden base64 inputs)

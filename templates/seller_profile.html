@@ -96,9 +96,16 @@
             <span class="badge {{ 'bg-warning' if vehicle.is_plus else 'bg-secondary' }}">
               {% if vehicle.is_plus %}<i class="fas fa-star me-1"></i>Plus{% else %}<i class="fas fa-gift me-1"></i>Gratuita{% endif %}
             </span>
-            <span class="badge bg-light text-dark">
-              <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
-            </span>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="badge bg-light text-dark">
+                <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
+              </span>
+              {% if vehicle.get_sub_location() %}
+              <span class="badge sub-location-badge text-dark">
+                <i class="fas fa-thumbtack me-1"></i>{{ vehicle.get_sub_location() }}
+              </span>
+              {% endif %}
+            </div>
           </div>
         </div>
       </a>

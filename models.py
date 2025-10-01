@@ -47,7 +47,8 @@ class Vehicle(db.Model):
     updated_at = db.Column(db.DateTime,
                            default=datetime.utcnow,
                            onupdate=datetime.utcnow)
-    location = db.Column(db.String(50), nullable=True)  # Tunuyán, Tupungato, San Carlos
+    location = db.Column(db.String(50), nullable=True)  # Department (e.g., Tunuyán, Tupungato, San Carlos, San Rafael)
+    sub_location = db.Column(db.String(50), nullable=True)  # Sub-location (e.g., Ciudad, Vista Flores, Cordon del Plata, Cuadro Benegas)
     tire_condition = db.Column(db.String(50), nullable=True)  # Estado de Cubiertas
     seller_keyword = db.Column(db.String(50), nullable=True)  # Palabra clave del vendedor para agrupar vehículos
     client_request_id = db.Column(
@@ -187,6 +188,16 @@ class Vehicle(db.Model):
                 return client_request.location
         return "Valle de Uco"  # Default location
     
+    def get_sub_location(self):
+        """Get vehicle sub-location, if available, falling back to None"""
+        if self.sub_location:
+            return self.sub_location
+        elif self.client_request_id:
+            client_request = ClientRequest.query.get(self.client_request_id)
+            if client_request and getattr(client_request, 'sub_location', None):
+                return client_request.sub_location
+        return None
+    
     def get_tire_condition_display(self):
         """Get tire condition display text"""
         tire_conditions = {
@@ -245,7 +256,8 @@ class ClientRequest(db.Model):
     phone_number = db.Column(db.String(20),
                              nullable=True)  # Legacy field for compatibility
     location = db.Column(db.String(50),
-                         nullable=False)  # Tunuyán, Tupungato, San Carlos
+                         nullable=False)  # Department (e.g., Tunuyán, Tupungato, San Carlos, San Rafael)
+    sub_location = db.Column(db.String(50), nullable=True)  # Sub-location inside department
     address = db.Column(db.String(500), nullable=True)  # Optional address
 
     # Seller grouping

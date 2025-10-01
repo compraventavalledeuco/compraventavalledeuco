@@ -94,8 +94,6 @@ body {
     border-radius: 25px;
     border: 1px solid #e2e8f0;
     font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--dark-color);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -125,11 +123,17 @@ body {
     background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
-.hero-illustration {
-    padding: 2rem;
-    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-    border-radius: 20px;
-    margin: 1rem;
+/* New departments */
+.vehicle-department-badge.san-rafael {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.vehicle-department-badge.malargüe {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+.vehicle-department-badge.general-alvear {
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
 }
 
 /* Vehicle Cards */
@@ -916,7 +920,6 @@ body {
     padding: 0.25rem 0.75rem;
     border-radius: 15px;
     font-size: 0.8rem;
-    font-weight: 600;
     box-shadow: 0 2px 4px rgba(251, 191, 36, 0.4);
     z-index: 10;
 }
@@ -934,19 +937,19 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Carousel controls for vehicle cards */
-.vehicle-carousel-control {
+/* Sub-location badge style */
+.sub-location-badge {
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 30px;
-    height: 30px;
-    background: rgba(0, 0, 0, 0.6);
-    border: none;
-    border-radius: 50%;
-    z-index: 5;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    top: 75px;
+    right: 10px;
+    background: rgba(255,255,255,0.95);
+    color: #111827 !important;
+    padding: 0.15rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .vehicle-carousel-control:hover {
