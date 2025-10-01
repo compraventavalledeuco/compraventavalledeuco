@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Editar Vehículo - Panel Administrativo{% endblock %}
 
@@ -186,15 +186,31 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            {% for image in current_images %}
-                                <div class="col-md-3 mb-3">
-                                    <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}" class="img-fluid rounded" style="height: 150px; width: 100%; object-fit: cover;">
-                                    <div class="text-center mt-1">
-                                        <small class="text-muted">Imagen {{ loop.index }}</small>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
+    {% for image in current_images %}
+        {% set idx = loop.index0 %}
+        <div class="col-md-3 mb-3">
+            <div class="position-relative current-image-card" data-current-index="{{ idx }}" style="cursor: pointer;">
+                <img src="{% if image.startswith('http') %}{{ image }}{% else %}{{ url_for('static', filename=image) }}{% endif %}"
+                     class="img-fluid rounded border"
+                     style="height: 150px; width: 100%; object-fit: cover;"
+                     onclick="selectExistingMainImage({{ idx }})">
+                <div class="position-absolute top-0 start-0 p-1">
+                    <span class="badge bg-primary current-main-badge {% if idx != (vehicle.main_image_index or 0) %}d-none{% endif %}">
+                        <i class="fas fa-star me-1"></i>Principal
+                    </span>
+                </div>
+            </div>
+            <div class="d-grid mt-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectExistingMainImage({{ idx }}); return false;">
+                    <i class="fas fa-check me-1"></i>Marcar como principal
+                </button>
+            </div>
+            <div class="text-center mt-1">
+                <small class="text-muted">Imagen {{ loop.index }}</small>
+            </div>
+        </div>
+    {% endfor %}
+</div>
                     </div>
                 </div>
                 {% endif %}
@@ -567,6 +583,27 @@ function selectMainImage(imageIndex) {
     }
 }
 
+ 
+// Allow selecting an existing image (already stored) as main image
+function selectExistingMainImage(currentIndex) {
+    try {
+        document.querySelectorAll('#currentImagesSection .current-main-badge').forEach(function(b){ b.classList.add('d-none'); });
+        var card = document.querySelector('#currentImagesSection .current-image-card[data-current-index="' + currentIndex + '"]');
+        if (card) {
+            var badge = card.querySelector('.current-main-badge');
+            if (badge) { badge.classList.remove('d-none'); }
+        }
+        var mainImageIndexInput = document.getElementById('mainImageIndex');
+        if (mainImageIndexInput) { mainImageIndexInput.value = currentIndex; }
+        document.querySelectorAll('#currentImagesSection img').forEach(function(img){ img.style.border = '1px solid #dee2e6'; });
+        if (card) {
+            var imgEl = card.querySelector('img');
+            if (imgEl) { imgEl.style.border = '3px solid #0d6efd'; }
+        }
+    } catch (e) {
+        console.warn('Error selecting existing main image', e);
+    }
+}
 // Plan type change handler
 document.addEventListener('DOMContentLoaded', function() {
     const planSelect = document.getElementById('is_plus');
