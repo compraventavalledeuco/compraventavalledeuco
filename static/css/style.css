@@ -123,7 +123,7 @@ body {
     background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
-/* New departments */
+/* Zona Sur */
 .vehicle-department-badge.san-rafael {
     background: linear-gradient(135deg, #ef4444, #b91c1c);
 }
@@ -134,6 +134,58 @@ body {
 
 .vehicle-department-badge.general-alvear {
     background: linear-gradient(135deg, #14b8a6, #0f766e);
+}
+
+/* Área Metropolitana */
+.vehicle-department-badge.capital {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.vehicle-department-badge.godoy-cruz {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
+.vehicle-department-badge.guaymallén {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+.vehicle-department-badge.luján-de-cuyo {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+}
+
+.vehicle-department-badge.maipú {
+    background: linear-gradient(135deg, #84cc16, #65a30d);
+}
+
+/* Zona Este */
+.vehicle-department-badge.rivadavia {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.vehicle-department-badge.junín {
+    background: linear-gradient(135deg, #64748b, #475569);
+}
+
+.vehicle-department-badge.san-martín {
+    background: linear-gradient(135deg, #22d3ee, #06b6d4);
+}
+
+/* Zona Norte */
+.vehicle-department-badge.las-heras {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.vehicle-department-badge.lavalle {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+/* Otras Zonas */
+.vehicle-department-badge.la-paz {
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+}
+
+.vehicle-department-badge.santa-rosa {
+    background: linear-gradient(135deg, #eab308, #ca8a04);
 }
 
 /* Vehicle Cards */
@@ -258,6 +310,7 @@ body {
     line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

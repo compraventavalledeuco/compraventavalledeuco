@@ -138,7 +138,17 @@
                                        value="{{ vehicle.color or '' }}">
                             </div>
                             
-                            <div class="col-md-6 mb-3" id="tire-condition-field">
+                                                        
+                            <div class="col-md-6 mb-3" id="sub-location-field">
+                                <label for="sub_location" class="form-label">
+                                    <i class="fas fa-map-pin me-2"></i>Sub-ubicación (barrio/zona)
+                                </label>
+                                <input type="text" class="form-control" id="sub_location" name="sub_location" 
+                                       value="{{ vehicle.sub_location or '' }}" 
+                                       placeholder="Vista Flores, Cordón del Plata, Cuadro Benegas...">
+                                <div class="form-text">Lugares principales dentro del departamento.</div>
+                            </div>
+<div class="col-md-6 mb-3" id="tire-condition-field">
                                 <label for="tire_condition" class="form-label">
                                     <i class="fas fa-circle me-2"></i>Estado de Cubiertas
                                 </label>
@@ -330,7 +340,15 @@
                                 <input type="text" class="form-control" id="user_location" name="user_location" 
                                        value="{{ vehicle.location or '' }}" placeholder="Tunuyán, Mendoza">
                             </div>
-                            <div class="col-12 mb-3">
+                                                        <div class="col-md-6 mb-3">
+                                <label for="user_sub_location" class="form-label">
+                                    <i class="fas fa-thumbtack me-2"></i>Sub-ubicación
+                                </label>
+                                <input type="text" class="form-control" id="user_sub_location" name="user_sub_location" 
+                                       value="{{ vehicle.sub_location or '' }}" 
+                                       placeholder="Ciudad, Vista Flores, Cuadro Nacional...">
+                            </div>
+<div class="col-12 mb-3">
                                 <label for="user_address" class="form-label">
                                     <i class="fas fa-home me-2"></i>Domicilio
                                 </label>
