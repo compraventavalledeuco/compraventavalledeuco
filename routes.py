@@ -606,6 +606,18 @@ def edit_vehicle(id):
             print(f"[ADMIN EDIT] Saved {len(new_image_urls)} images to gallery. main_image_index={vehicle.main_image_index}")
         else:
             print("[ADMIN EDIT] No new images uploaded in this request")
+            # Even if no new images are uploaded, allow changing the main image among existing ones
+            try:
+                if 'main_image_index' in request.form:
+                    existing_images = vehicle.get_images_list() or []
+                    incoming_index = int(request.form.get('main_image_index', vehicle.main_image_index or 0))
+                    if incoming_index < 0 or incoming_index >= len(existing_images):
+                        # Clamp to valid range if out of bounds
+                        incoming_index = 0 if len(existing_images) > 0 else 0
+                    vehicle.main_image_index = incoming_index
+                    print(f"[ADMIN EDIT] Updated main_image_index on existing gallery -> {vehicle.main_image_index}")
+            except (ValueError, TypeError) as e:
+                print(f"[ADMIN EDIT] Invalid main_image_index received: {e}")
         
         db.session.commit()
         flash('Vehículo actualizado exitosamente', 'success')
