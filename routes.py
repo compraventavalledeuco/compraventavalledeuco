@@ -837,6 +837,7 @@ def client_request():
             call_number=call_number if call_number else None,
             phone_number=whatsapp_number or call_number,  # Legacy field compatibility
             location=request.form['location'],
+            sub_location=request.form.get('sub_location', ''),
             address=request.form.get('address', ''),
             seller_keyword=seller_keyword if seller_keyword else None,
             title=request.form['title'],
@@ -1003,6 +1004,8 @@ def process_client_request(request_id, action):
                 main_image_index=client_request.main_image_index,
                 whatsapp_number=client_request.whatsapp_number,
                 call_number=client_request.call_number,
+                location=client_request.location,
+                sub_location=client_request.sub_location,
                 is_plus=(client_request.publication_type == 'plus'),
                 seller_keyword=client_request.seller_keyword,
                 client_request_id=client_request.id,
@@ -1067,6 +1070,7 @@ def edit_client_request(request_id):
         client_request.email = request.form.get('email', '')
         client_request.phone_number = request.form.get('phone_number', '')
         client_request.location = request.form.get('location', '')
+        client_request.sub_location = request.form.get('sub_location', '')
         client_request.address = request.form.get('address', '')
         client_request.title = request.form['title']
         client_request.description = request.form['description']
