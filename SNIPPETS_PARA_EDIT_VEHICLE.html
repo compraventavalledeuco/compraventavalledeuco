@@ -1,0 +1,43 @@
+<!-- ============================================ -->
+<!-- INSTRUCCIONES PARA EDIT_VEHICLE.HTML       -->
+<!-- ============================================ -->
+
+<!-- SNIPPET 1: Agregar DESPUÉS de la línea 139 (después del input de color) -->
+<!-- Insertar entre el cierre de </div> del color y el <div class="col-md-6 mb-3" id="tire-condition-field"> -->
+
+                            <div class="col-md-6 mb-3" id="sub-location-field">
+                                <label for="sub_location" class="form-label">
+                                    <i class="fas fa-map-pin me-2"></i>Sub-ubicación (barrio/zona)
+                                </label>
+                                <input type="text" class="form-control" id="sub_location" name="sub_location" 
+                                       value="{{ vehicle.sub_location or '' }}" 
+                                       placeholder="Vista Flores, Cordón del Plata, Cuadro Benegas...">
+                                <div class="form-text">Lugares principales dentro del departamento.</div>
+                            </div>
+
+<!-- ============================================ -->
+
+<!-- SNIPPET 2: Agregar DESPUÉS de la línea 332 (después del input de user_location) -->
+<!-- Insertar entre el cierre de </div> del user_location y el <div class="col-12 mb-3"> del user_address -->
+
+                            <div class="col-md-6 mb-3">
+                                <label for="user_sub_location" class="form-label">
+                                    <i class="fas fa-thumbtack me-2"></i>Sub-ubicación
+                                </label>
+                                <input type="text" class="form-control" id="user_sub_location" name="user_sub_location" 
+                                       value="{{ vehicle.sub_location or '' }}" 
+                                       placeholder="Ciudad, Vista Flores, Cuadro Nacional...">
+                            </div>
+
+<!-- ============================================ -->
+<!-- FIN DE SNIPPETS                             -->
+<!-- ============================================ -->
+
+<!-- RESUMEN:
+1. Abrí templates/edit_vehicle.html
+2. Buscá la línea 139 donde cierra el div del input de "color"
+3. Pegá el SNIPPET 1 después de esa línea
+4. Buscá la línea 332 donde está el input de "user_location"
+5. Pegá el SNIPPET 2 después del cierre de ese div
+6. Guardá el archivo
+-->
