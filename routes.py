@@ -1272,6 +1272,45 @@ def admin_statistics():
                          devices=devices,
                          days=days)
 
+@app.route('/admin/logs-visitas')
+def admin_view_logs():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('panel_login'))
+    
+    # Paginación
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    
+    # Filtros opcionales
+    vehicle_id = request.args.get('vehicle_id', type=int)
+    show_blocked = request.args.get('blocked', type=str)
+    
+    # Query base
+    query = VehicleView.query.order_by(VehicleView.timestamp.desc())
+    
+    # Aplicar filtros
+    if vehicle_id:
+        query = query.filter_by(vehicle_id=vehicle_id)
+    
+    if show_blocked == 'only':
+        query = query.filter_by(is_counted=False)
+    elif show_blocked == 'exclude':
+        query = query.filter_by(is_counted=True)
+    
+    # Paginar
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+    
+    # Obtener vehículos para filtro
+    vehicles = Vehicle.query.order_by(Vehicle.title).all()
+    
+    return render_template('admin_view_logs.html',
+                         logs=logs,
+                         pagination=pagination,
+                         vehicles=vehicles,
+                         current_vehicle_id=vehicle_id,
+                         current_blocked_filter=show_blocked)
+
 @app.route('/admin/usuarios-vehiculos')
 def admin_users_vehicles():
     if not session.get('admin_logged_in'):

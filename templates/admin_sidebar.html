@@ -41,7 +41,16 @@
                    href="{{ url_for('admin_statistics') }}">
                     <i class="fas fa-chart-line me-2"></i>
                     Estadísticas
-                    <span class="badge bg-info ms-2">Nuevo</span>
+                </a>
+            </li>
+            
+            <!-- Logs de Visitas -->
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_view_logs' %}active{% endif %}" 
+                   href="{{ url_for('admin_view_logs') }}">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Logs de Visitas
+                    <span class="badge bg-warning ms-2">Nuevo</span>
                 </a>
             </li>
             
