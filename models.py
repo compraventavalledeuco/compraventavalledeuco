@@ -241,8 +241,48 @@ class VehicleView(db.Model):
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Nuevos campos para anti-fraude y analytics
+    session_id = db.Column(db.String(64))  # Hash único de sesión
+    device_type = db.Column(db.String(20))  # mobile, desktop, tablet
+    browser = db.Column(db.String(50))  # Chrome, Firefox, Safari, etc.
+    os = db.Column(db.String(50))  # Windows, iOS, Android, etc.
+    referrer = db.Column(db.String(500))  # De dónde viene el visitante
+    city = db.Column(db.String(100))  # Ciudad aproximada
+    country = db.Column(db.String(50))  # País
+    is_unique_today = db.Column(db.Boolean, default=False)  # Primera vista del día
+    is_counted = db.Column(db.Boolean, default=True)  # Si se contó en estadísticas
+    blocked_reason = db.Column(db.String(100))  # Razón de bloqueo si aplica
 
     vehicle = db.relationship('Vehicle', backref='views')
+
+
+class DailyStats(db.Model):
+    """Estadísticas agregadas por día para dashboard y reportes"""
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)  # Día de las stats
+    
+    # Stats globales del día
+    total_page_visits = db.Column(db.Integer, default=0)
+    unique_visitors = db.Column(db.Integer, default=0)  # IPs únicas del día
+    
+    # Stats por vehículo (JSON)
+    vehicle_stats = db.Column(db.Text)  # JSON: {vehicle_id: {views, unique_views, clicks}}
+    
+    # Stats de dispositivos
+    mobile_visitors = db.Column(db.Integer, default=0)
+    desktop_visitors = db.Column(db.Integer, default=0)
+    tablet_visitors = db.Column(db.Integer, default=0)
+    
+    # Ubicaciones top (JSON)
+    top_cities = db.Column(db.Text)  # JSON: [{"city": "Mendoza", "count": 50}]
+    top_countries = db.Column(db.Text)  # JSON: [{"country": "Argentina", "count": 100}]
+    
+    # Anti-fraude stats
+    blocked_views = db.Column(db.Integer, default=0)  # Vistas bloqueadas por fraude
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ClientRequest(db.Model):

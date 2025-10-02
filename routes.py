@@ -274,13 +274,27 @@ def api_search():
 def vehicle_detail(id):
     vehicle = Vehicle.query.get_or_404(id)
     
-    # Track view
-    view = VehicleView(
+    # Track view con sistema anti-fraude
+    from utils.analytics import create_vehicle_view
+    
+    ip_address = request.remote_addr
+    user_agent = request.headers.get('User-Agent', '')
+    referrer = request.referrer
+    
+    # Crear vista con anti-fraude
+    view, should_count = create_vehicle_view(
         vehicle_id=vehicle.id,
-        ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent', '')[:500]
+        ip_address=ip_address,
+        user_agent=user_agent,
+        referrer=referrer
     )
+    
     db.session.add(view)
+    
+    # Solo incrementar contador si no fue bloqueado por fraude
+    if should_count:
+        vehicle.views_count = (vehicle.views_count or 0) + 1
+    
     db.session.commit()
     
     # Check if seller has multiple vehicles (for share button)
