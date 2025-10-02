@@ -88,9 +88,40 @@
         </div>
     </div>
 
-    <!-- Charts Row -->
+    <!-- Devices Row (Compact) -->
     <div class="row mb-4">
-        <div class="col-lg-8">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <i class="fas fa-mobile text-primary fa-2x mb-2"></i>
+                    <h4 class="mb-0 fw-bold">{{ devices.get('mobile', 0) }}</h4>
+                    <p class="text-muted mb-0">Mobile</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <i class="fas fa-desktop text-success fa-2x mb-2"></i>
+                    <h4 class="mb-0 fw-bold">{{ devices.get('desktop', 0) }}</h4>
+                    <p class="text-muted mb-0">Desktop</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-tablet text-info fa-2x mb-2"></i>
+                    <h4 class="mb-0 fw-bold">{{ devices.get('tablet', 0) }}</h4>
+                    <p class="text-muted mb-0">Tablet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Row (Full Width) -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -98,34 +129,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="dailyViewsChart" height="80"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-mobile-alt me-2"></i>Dispositivos
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="devicesChart"></canvas>
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span><i class="fas fa-mobile text-primary"></i> Mobile</span>
-                            <strong>{{ devices.get('mobile', 0) }}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span><i class="fas fa-desktop text-success"></i> Desktop</span>
-                            <strong>{{ devices.get('desktop', 0) }}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span><i class="fas fa-tablet text-info"></i> Tablet</span>
-                            <strong>{{ devices.get('tablet', 0) }}</strong>
-                        </div>
-                    </div>
+                    <canvas id="dailyViewsChart" height="60"></canvas>
                 </div>
             </div>
         </div>
@@ -282,30 +286,5 @@ const dailyViewsChart = new Chart(ctxDaily, {
     }
 });
 
-// Gráfico de dispositivos (Doughnut)
-const ctxDevices = document.getElementById('devicesChart').getContext('2d');
-const devicesChart = new Chart(ctxDevices, {
-    type: 'doughnut',
-    data: {
-        labels: ['Mobile', 'Desktop', 'Tablet'],
-        datasets: [{
-            data: [devicesData.mobile, devicesData.desktop, devicesData.tablet],
-            backgroundColor: [
-                '#3b82f6',
-                '#10b981',
-                '#06b6d4'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                display: false
-            }
-        }
-    }
-});
 </script>
 {% endblock %}
