@@ -1210,6 +1210,70 @@ def edit_client_request(request_id):
     
     return render_template('edit_client_request.html', client_request=client_request)
 
+@app.route('/admin/estadisticas')
+def admin_statistics():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('panel_login'))
+    
+    from utils.analytics import get_vehicle_stats, get_daily_views, get_top_vehicles
+    from datetime import datetime, timedelta
+    
+    # Período para stats (últimos 30 días)
+    days = 30
+    
+    # Top vehículos más vistos
+    top_vehicles_data = get_top_vehicles(days=days, limit=10)
+    top_vehicles = []
+    for vehicle_id, views in top_vehicles_data:
+        vehicle = Vehicle.query.get(vehicle_id)
+        if vehicle:
+            top_vehicles.append({
+                'vehicle': vehicle,
+                'views': views
+            })
+    
+    # Vistas diarias para gráfico
+    daily_views = get_daily_views(days=days)
+    
+    # Stats globales
+    total_views_query = VehicleView.query.filter(
+        VehicleView.timestamp >= datetime.utcnow() - timedelta(days=days),
+        VehicleView.is_counted == True
+    )
+    total_views = total_views_query.count()
+    
+    unique_visitors = db.session.query(
+        db.func.count(db.func.distinct(VehicleView.ip_address))
+    ).filter(
+        VehicleView.timestamp >= datetime.utcnow() - timedelta(days=days),
+        VehicleView.is_counted == True
+    ).scalar()
+    
+    blocked_views = VehicleView.query.filter(
+        VehicleView.timestamp >= datetime.utcnow() - timedelta(days=days),
+        VehicleView.is_counted == False
+    ).count()
+    
+    # Stats por dispositivo
+    device_stats = db.session.query(
+        VehicleView.device_type,
+        db.func.count(VehicleView.id)
+    ).filter(
+        VehicleView.timestamp >= datetime.utcnow() - timedelta(days=days),
+        VehicleView.is_counted == True
+    ).group_by(VehicleView.device_type).all()
+    
+    devices = {device: count for device, count in device_stats}
+    
+    return render_template('admin_statistics.html',
+                         top_vehicles=top_vehicles,
+                         daily_views=daily_views,
+                         total_views=total_views,
+                         unique_visitors=unique_visitors,
+                         blocked_views=blocked_views,
+                         devices=devices,
+                         days=days)
+
 @app.route('/admin/usuarios-vehiculos')
 def admin_users_vehicles():
     if not session.get('admin_logged_in'):

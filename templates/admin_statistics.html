@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Estadísticas - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 fw-bold">
+                <i class="fas fa-chart-line me-2 text-primary"></i>Estadísticas y Analytics
+            </h1>
+            <p class="text-muted">Vista general de los últimos {{ days }} días con sistema anti-fraude activo</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Total Vistas</p>
+                            <h3 class="mb-0 fw-bold">{{ total_views }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="fas fa-eye fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Visitantes Únicos</p>
+                            <h3 class="mb-0 fw-bold">{{ unique_visitors }}</h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Vistas Bloqueadas</p>
+                            <h3 class="mb-0 fw-bold">{{ blocked_views }}</h3>
+                        </div>
+                        <div class="text-danger">
+                            <i class="fas fa-shield-alt fa-2x"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted">Fraude detectado</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Tasa Real</p>
+                            <h3 class="mb-0 fw-bold">
+                                {% if total_views + blocked_views > 0 %}
+                                    {{ ((total_views / (total_views + blocked_views)) * 100)|round(1) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </h3>
+                        </div>
+                        <div class="text-info">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted">Vistas legítimas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-area me-2"></i>Vistas por Día
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyViewsChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-mobile-alt me-2"></i>Dispositivos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="devicesChart"></canvas>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="fas fa-mobile text-primary"></i> Mobile</span>
+                            <strong>{{ devices.get('mobile', 0) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="fas fa-desktop text-success"></i> Desktop</span>
+                            <strong>{{ devices.get('desktop', 0) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-tablet text-info"></i> Tablet</span>
+                            <strong>{{ devices.get('tablet', 0) }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Vehicles -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-trophy me-2 text-warning"></i>Top 10 Vehículos Más Vistos
+                    </h5>
+                    <span class="badge bg-primary">Últimos {{ days }} días</span>
+                </div>
+                <div class="card-body">
+                    {% if top_vehicles %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="50">#</th>
+                                    <th>Vehículo</th>
+                                    <th>Precio</th>
+                                    <th>Ubicación</th>
+                                    <th width="120">Vistas</th>
+                                    <th width="100">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in top_vehicles %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-{{ 'warning' if loop.index <= 3 else 'secondary' }}">
+                                            {{ loop.index }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ item.vehicle.title }}</strong>
+                                        {% if item.vehicle.year %}
+                                            <br><small class="text-muted">Año: {{ item.vehicle.year }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="{{ item.vehicle.get_currency_class() }}">
+                                            {{ item.vehicle.format_price_with_currency() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ item.vehicle.get_location() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success fs-6">
+                                            <i class="fas fa-eye me-1"></i>{{ item.views }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('vehicle_detail', id=item.vehicle.id) }}" 
+                                           class="btn btn-sm btn-primary" target="_blank">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                        <p>No hay datos de vistas en los últimos {{ days }} días</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anti-Fraud Info -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-shield-alt me-2 text-info"></i>Sistema Anti-Fraude Activo
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <small class="text-muted">Cooldown:</small>
+                            <p class="mb-0"><strong>30 minutos</strong> entre vistas del mismo vehículo por IP</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Límite Diario:</small>
+                            <p class="mb-0"><strong>10 vistas</strong> máximo por IP del mismo vehículo al día</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Rate Limiting:</small>
+                            <p class="mb-0"><strong>15 vistas</strong> máximo en 5 minutos (anti-spam)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Datos para gráficos
+const dailyViewsData = {{ daily_views|tojson }};
+const devicesData = {
+    mobile: {{ devices.get('mobile', 0) }},
+    desktop: {{ devices.get('desktop', 0) }},
+    tablet: {{ devices.get('tablet', 0) }}
+};
+
+// Gráfico de vistas diarias
+const ctxDaily = document.getElementById('dailyViewsChart').getContext('2d');
+const dailyViewsChart = new Chart(ctxDaily, {
+    type: 'line',
+    data: {
+        labels: dailyViewsData.map(d => d.date),
+        datasets: [{
+            label: 'Vistas Totales',
+            data: dailyViewsData.map(d => d.views),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Visitantes Únicos',
+            data: dailyViewsData.map(d => d.unique),
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Gráfico de dispositivos (Doughnut)
+const ctxDevices = document.getElementById('devicesChart').getContext('2d');
+const devicesChart = new Chart(ctxDevices, {
+    type: 'doughnut',
+    data: {
+        labels: ['Mobile', 'Desktop', 'Tablet'],
+        datasets: [{
+            data: [devicesData.mobile, devicesData.desktop, devicesData.tablet],
+            backgroundColor: [
+                '#3b82f6',
+                '#10b981',
+                '#06b6d4'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

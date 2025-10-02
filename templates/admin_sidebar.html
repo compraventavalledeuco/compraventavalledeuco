@@ -35,6 +35,16 @@
                 </a>
             </li>
             
+            <!-- Estadísticas -->
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_statistics' %}active{% endif %}" 
+                   href="{{ url_for('admin_statistics') }}">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Estadísticas
+                    <span class="badge bg-info ms-2">Nuevo</span>
+                </a>
+            </li>
+            
             <!-- Solicitudes -->
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint == 'admin_pending_requests' %}active{% endif %}" 
