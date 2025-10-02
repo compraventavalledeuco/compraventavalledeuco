@@ -10,7 +10,7 @@ from flask import request
 from models import db, VehicleView
 
 # Configuración del sistema anti-fraude
-COOLDOWN_MINUTES = 30  # Tiempo mínimo entre vistas del mismo vehículo por IP
+COOLDOWN_MINUTES = 180  # Tiempo mínimo entre vistas del mismo vehículo por IP (3 horas)
 MAX_VIEWS_PER_DAY = 10  # Máximo de vistas al día por IP del mismo vehículo
 RATE_LIMIT_MINUTES = 5  # Ventana de tiempo para detectar spam
 RATE_LIMIT_MAX = 15  # Máximo de vistas en la ventana de tiempo
