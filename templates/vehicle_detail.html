@@ -74,31 +74,8 @@
                             <div class="sub-location-badge">
                                 <i class="fas fa-thumbtack me-1"></i>{{ vehicle.get_sub_location() }}
                             </div>
-                            
-                            <!-- Plan badge -->
-                            {% if not vehicle.is_plus %}
-                                <div class="position-absolute top-0 end-0 m-3">
-                                    <span class="badge bg-success fs-6">
-                                        <i class="fas fa-tag me-1"></i>Gratuita
-                                    </span>
-                                </div>
-                            {% else %}
-                                <div class="vehicle-plus-badge">
-                                    <i class="fas fa-star me-1"></i>Plus
-                                </div>
-                                
-                                <!-- Department and sub-location badges for plus vehicles -->
-                                <div class="vehicle-department-badge {{ vehicle.get_location().lower().replace(' ', '-') }}">
-                                    <i class="fas fa-map-marker-alt me-1"></i>{{ vehicle.get_location() }}
-                                </div>
-                                {% if vehicle.get_sub_location() %}
-                                <div class="sub-location-badge">
-                                    <i class="fas fa-thumbtack me-1"></i>{{ vehicle.get_sub_location() }}
-                                </div>
-                                {% endif %}
                             {% endif %}
-                        </div>
-                    {% endif %}
+                        {% endif %}
                 </div>
             </div>
 
