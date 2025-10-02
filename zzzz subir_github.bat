@@ -6,7 +6,7 @@ echo ========================================
 
 echo.
 echo Configurando repositorio remoto...
-git remote set-url origin https://github.com/compraventavalledeuco/compraventavalledeuco-prueba.git
+git remote set-url origin https://github.com/compraventavalledeuco/compraventavalledeuco.git
 
 
 echo.
