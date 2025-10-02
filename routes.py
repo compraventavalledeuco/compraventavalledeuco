@@ -290,12 +290,10 @@ def vehicle_detail(id):
     )
     
     db.session.add(view)
-    
-    # Solo incrementar contador si no fue bloqueado por fraude
-    if should_count:
-        vehicle.views_count = (vehicle.views_count or 0) + 1
-    
     db.session.commit()
+    
+    # Nota: El conteo de vistas se hace directamente desde VehicleView
+    # con is_counted=True para filtrar vistas bloqueadas por fraude
     
     # Check if seller has multiple vehicles (for share button)
     seller_vehicle_count = 0

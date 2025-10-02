@@ -198,6 +198,14 @@ class Vehicle(db.Model):
                 return client_request.sub_location
         return None
     
+    def get_views_count(self):
+        """Get count of legitimate views (not blocked by anti-fraud)"""
+        from models import VehicleView
+        return VehicleView.query.filter_by(
+            vehicle_id=self.id,
+            is_counted=True
+        ).count()
+    
     def get_tire_condition_display(self):
         """Get tire condition display text"""
         tire_conditions = {
