@@ -656,31 +656,29 @@ document.addEventListener('DOMContentLoaded', function() {
     function addImagePreview(imageData) {
         const previewDiv = document.createElement('div');
         previewDiv.className = 'col-md-6 col-lg-12 mb-3';
-        previewDiv.id = `preview-${imageData.id}`;
+        previewDiv.id = 'preview-' + imageData.id;
         
         const isMainImage = images.length === 1; // First image is main by default
         
-        previewDiv.innerHTML = `
-            <div class="position-relative image-preview-card" data-index="${imageData.id}">
-                <img src="${imageData.dataUrl}" class="img-fluid rounded border image-selectable" 
-                     style="height: 150px; width: 100%; object-fit: cover; cursor: pointer; transition: all 0.3s ease;"
-                     onclick="selectMainImage(${imageData.id})">
-                <div class="position-absolute top-0 end-0 p-1">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeImage(${imageData.id})">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="main-image-badge position-absolute ${isMainImage ? '' : 'd-none'}" 
-                     style="top: 5px; left: 5px;">
-                    <span class="badge bg-primary">
-                        <i class="fas fa-star me-1"></i>Principal
-                    </span>
-                </div>
-                <div class="text-center mt-1">
-                    <small class="text-muted">${imageData.name}</small>
-                </div>
-            </div>
-        `;
+        previewDiv.innerHTML = '<div class="position-relative image-preview-card" data-index="' + imageData.id + '">' +
+            '<img src="' + imageData.dataUrl + '" class="img-fluid rounded border image-selectable" ' +
+            'style="height: 150px; width: 100%; object-fit: cover; cursor: pointer; transition: all 0.3s ease;" ' +
+            'onclick="selectMainImage(' + imageData.id + ')">' +
+            '<div class="position-absolute top-0 end-0 p-1">' +
+            '<button type="button" class="btn btn-sm btn-danger" onclick="removeImage(' + imageData.id + ')">' +
+            '<i class="fas fa-times"></i>' +
+            '</button>' +
+            '</div>' +
+            '<div class="main-image-badge position-absolute ' + (isMainImage ? '' : 'd-none') + '" ' +
+            'style="top: 5px; left: 5px;">' +
+            '<span class="badge bg-primary">' +
+            '<i class="fas fa-star me-1"></i>Principal' +
+            '</span>' +
+            '</div>' +
+            '<div class="text-center mt-1">' +
+            '<small class="text-muted">' + imageData.name + '</small>' +
+            '</div>' +
+            '</div>';
         
         previewContainer.appendChild(previewDiv);
     }
@@ -690,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function() {
         images.forEach((imageData, index) => {
             const input = document.createElement('input');
             input.type = 'hidden';
-            input.name = `vehicle_images_data_${index}`;
+            input.name = 'vehicle_images_data_' + index;
             input.value = imageData.dataUrl;
             hiddenImagesContainer.appendChild(input);
         });
@@ -713,7 +711,7 @@ document.addEventListener('DOMContentLoaded', function() {
         images = images.filter(img => img.id !== imageId);
         
         // Remove preview
-        const preview = document.getElementById(`preview-${imageId}`);
+        const preview = document.getElementById('preview-' + imageId);
         if (preview) {
             preview.remove();
         }
@@ -752,7 +750,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Remove preview function
 function removePreview(imageIndex) {
-    const preview = document.getElementById(`preview-${imageIndex}`);
+    const preview = document.getElementById('preview-' + imageIndex);
     if (preview) {
         preview.remove();
         // Reindex remaining images and update main image if needed
@@ -774,7 +772,7 @@ function selectMainImage(imageIndex) {
     });
     
     // Add main image badge to selected image
-    const selectedCard = document.querySelector(`[data-index="${imageIndex}"]`);
+    const selectedCard = document.querySelector('[data-index="' + imageIndex + '"]');
     if (selectedCard) {
         const badge = selectedCard.querySelector('.main-image-badge');
         if (badge) badge.classList.remove('d-none');
@@ -802,18 +800,18 @@ function updateImageIndexes() {
         
         const img = card.querySelector('.image-selectable');
         if (img) {
-            img.setAttribute('onclick', `selectMainImage(${newIndex})`);
+            img.setAttribute('onclick', 'selectMainImage(' + newIndex + ')');
         }
         
         const removeBtn = card.querySelector('.btn-danger');
         if (removeBtn) {
-            removeBtn.setAttribute('onclick', `removePreview(${newIndex})`);
+            removeBtn.setAttribute('onclick', 'removePreview(' + newIndex + ')');
         }
         
         // Update parent div ID
         const parentDiv = card.closest('[id^="preview-"]');
         if (parentDiv) {
-            parentDiv.id = `preview-${newIndex}`;
+            parentDiv.id = 'preview-' + newIndex;
         }
     });
     
